@@ -16,7 +16,7 @@ A modular framework for image classification using Wavelet Scattering Transform 
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/brus/wavelet.git
+git clone https://github.com/mattiabestiaccia/wavelet.git
 cd wavelet
 ```
 

@@ -17,7 +17,7 @@ setup(
     description="A modular framework for image classification using Wavelet Scattering Transform representations",
     author="brus",
     author_email="brus@example.com",
-    url="https://github.com/brus/wavelet",
+    url="https://github.com/mattiabestiaccia/wavelet",
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
