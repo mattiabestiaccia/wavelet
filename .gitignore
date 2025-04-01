@@ -1,0 +1,42 @@
+# Virtual environment
+wavelet_venv/
+
+# Large binary files
+*.pth
+*.tif
+*.pkl
+*.tar.gz
+*.so
+*.odex
+*.apk
+*.zip
+*.img
+
+# Model files (keep directories but not model weights)
+models/*/*.pth
+
+# Dataset files
+datasets/*
+\!datasets/.gitkeep
+\!datasets/HPL_images
+datasets/HPL_images/*
+\!datasets/HPL_images/.gitkeep
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Logs and outputs
+*.out
+*.log
+
+# IDE files
+.DS_Store
+.vscode/
+.idea/
+
+# Temporary files
+*.swp
+*.swo
+*~
