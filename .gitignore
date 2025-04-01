@@ -35,12 +35,17 @@ build/
 # Logs and outputs
 *.out
 *.log
-result/classification_result/
-result/elaborations/
-result/evaluation/
+results/classification_result/
+results/elaborations/
+results/evaluation/
+experiments/*/classification_result/
+experiments/*/evaluation/
+experiments/*/model_output/
+experiments/*/visualization/
 
 # Processed cache
 script/processed_images_cache.json
+**/processed_images_cache.json
 
 # IDE files
 .DS_Store
