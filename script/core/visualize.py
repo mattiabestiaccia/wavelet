@@ -47,6 +47,10 @@ def parse_args():
                                help='Path to model output directory')
     metrics_parser.add_argument('--output-dir', type=str, default=None,
                                help='Directory to save visualizations')
+    metrics_parser.add_argument('--experiment-name', type=str, default=None, 
+                               help='Name for this experiment (used in output path)')
+    metrics_parser.add_argument('--output-base', type=str, default=None, 
+                               help='Base directory for storing results (default: results)')
     
     # Sample visualization
     samples_parser = subparsers.add_parser('samples', help='Visualize dataset samples')
@@ -58,6 +62,10 @@ def parse_args():
                                help='Number of samples per class to visualize')
     samples_parser.add_argument('--output-dir', type=str, default=None,
                                help='Directory to save visualizations')
+    samples_parser.add_argument('--experiment-name', type=str, default=None, 
+                               help='Name for this experiment (used in output path)')
+    samples_parser.add_argument('--output-base', type=str, default=None, 
+                               help='Base directory for storing results (default: results)')
     
     # Distribution visualization
     dist_parser = subparsers.add_parser('distribution', help='Visualize class distribution')
@@ -65,10 +73,14 @@ def parse_args():
                             help='Path to dataset directory')
     dist_parser.add_argument('--output-dir', type=str, default=None,
                             help='Directory to save visualizations')
+    dist_parser.add_argument('--experiment-name', type=str, default=None, 
+                            help='Name for this experiment (used in output path)')
+    dist_parser.add_argument('--output-base', type=str, default=None, 
+                            help='Base directory for storing results (default: results)')
     
     return parser.parse_args()
 
-def visualize_metrics(model_dir, output_dir=None):
+def visualize_metrics(model_dir, output_dir=None, experiment_name=None, output_base=None):
     """
     Visualize training metrics from a saved model.
     
@@ -79,12 +91,14 @@ def visualize_metrics(model_dir, output_dir=None):
     # Handle relative paths
     if not os.path.isabs(model_dir):
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        # Check if path already includes models/ prefix
-        if not model_dir.startswith("models/") and not model_dir.startswith("models\\"):
-            model_dir = os.path.join(base_dir, "models", model_dir)
-        else:
-            # Just add the base directory
+        # Check if path already includes results/ or models/ prefix
+        if model_dir.startswith("results/") or model_dir.startswith("results\\"):
             model_dir = os.path.join(base_dir, model_dir)
+        elif model_dir.startswith("models/") or model_dir.startswith("models\\"):
+            model_dir = os.path.join(base_dir, model_dir)
+        else:
+            # Default to results directory
+            model_dir = os.path.join(base_dir, "results", model_dir)
     
     # Check if directory exists
     if not os.path.exists(model_dir):
@@ -159,7 +173,7 @@ def visualize_metrics(model_dir, output_dir=None):
     
     print(f"Metrics visualization saved to: {os.path.join(output_dir, 'metrics_plot.png')}")
 
-def visualize_samples(model_path, dataset_path, num_samples=5, output_dir=None):
+def visualize_samples(model_path, dataset_path, num_samples=5, output_dir=None, experiment_name=None, output_base=None):
     """
     Visualize samples from each class with their predictions.
     
@@ -178,9 +192,27 @@ def visualize_samples(model_path, dataset_path, num_samples=5, output_dir=None):
         print(f"Error: Dataset directory not found: {dataset_path}")
         return
     
+    # Configure output directory
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    
+    # Set output base directory
+    if output_base is None:
+        output_base = os.path.join(base_dir, "results")
+    else:
+        # Handle both absolute and relative paths
+        if os.path.isabs(output_base):
+            output_base = output_base
+        else:
+            output_base = os.path.join(base_dir, output_base)
+    
     # Set output directory
     if output_dir is None:
-        output_dir = os.path.dirname(model_path)
+        # Use experiment name if provided
+        viz_dir = "visualization"
+        if experiment_name:
+            viz_dir = os.path.join(viz_dir, experiment_name)
+        
+        output_dir = os.path.join(output_base, viz_dir)
     
     # Set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -196,8 +228,14 @@ def visualize_samples(model_path, dataset_path, num_samples=5, output_dir=None):
         num_classes = len(class_names)
     else:
         # Try to get class names from dataset
-        class_names = sorted([d for d in os.listdir(dataset_path) 
-                            if os.path.isdir(os.path.join(dataset_path, d))])
+        try:
+            class_names = sorted([d for d in os.listdir(dataset_path) 
+                                if os.path.isdir(os.path.join(dataset_path, d))])
+            if not class_names:
+                raise ValueError("No class directories found")
+        except Exception as e:
+            print(f"Warning: Could not get class names from dataset: {str(e)}")
+            class_names = ["Class_0", "Class_1", "Class_2", "Class_3"]
         num_classes = len(class_names)
         class_to_idx = {name: i for i, name in enumerate(class_names)}
     
@@ -300,7 +338,7 @@ def visualize_samples(model_path, dataset_path, num_samples=5, output_dir=None):
     
     print(f"All sample visualizations saved to: {output_dir}")
 
-def visualize_distribution(dataset_path, output_dir=None):
+def visualize_distribution(dataset_path, output_dir=None, experiment_name=None, output_base=None):
     """
     Visualize class distribution in a dataset.
     
@@ -313,9 +351,27 @@ def visualize_distribution(dataset_path, output_dir=None):
         print(f"Error: Dataset directory not found: {dataset_path}")
         return
     
+    # Configure output directory
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    
+    # Set output base directory
+    if output_base is None:
+        output_base = os.path.join(base_dir, "results")
+    else:
+        # Handle both absolute and relative paths
+        if os.path.isabs(output_base):
+            output_base = output_base
+        else:
+            output_base = os.path.join(base_dir, output_base)
+    
     # Set output directory
     if output_dir is None:
-        output_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "results")
+        # Use experiment name if provided
+        viz_dir = "visualization"
+        if experiment_name:
+            viz_dir = os.path.join(viz_dir, experiment_name)
+        
+        output_dir = os.path.join(output_base, viz_dir)
     
     os.makedirs(output_dir, exist_ok=True)
     
@@ -341,11 +397,28 @@ def main():
         return
     
     if args.command == 'metrics':
-        visualize_metrics(args.model_dir, args.output_dir)
+        visualize_metrics(
+            args.model_dir, 
+            args.output_dir, 
+            args.experiment_name, 
+            args.output_base
+        )
     elif args.command == 'samples':
-        visualize_samples(args.model_path, args.dataset, args.num_samples, args.output_dir)
+        visualize_samples(
+            args.model_path, 
+            args.dataset, 
+            args.num_samples, 
+            args.output_dir, 
+            args.experiment_name, 
+            args.output_base
+        )
     elif args.command == 'distribution':
-        visualize_distribution(args.dataset, args.output_dir)
+        visualize_distribution(
+            args.dataset, 
+            args.output_dir, 
+            args.experiment_name, 
+            args.output_base
+        )
 
 if __name__ == "__main__":
     main()

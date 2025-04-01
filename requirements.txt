@@ -261,7 +261,8 @@ ujson==5.10.0
 uritemplate==4.1.1
 urllib3==1.26.20
 user-agents==2.2.0
--e git+https://github.com/mattiabestiaccia/Wavelet-Scattering-Trasform-Analysis.git@38799398dac70b75534648d6634a8845949c5667#egg=wavelet_lib
+# Local installation instead of git
+-e .
 wcwidth==0.2.13
 webencodings==0.5.1
 Werkzeug==3.1.3

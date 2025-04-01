@@ -1,0 +1,40 @@
+================================================================================
+DATASET INSPECTION REPORT
+================================================================================
+Dataset path: /home/brus/Projects/wavelet/datasets/HPL_images/4_classes/
+Date: mar 1 apr 2025, 15:28:43, EDT
+Experiment: 0_run
+================================================================================
+
+NOTE: This is a migrated dataset report. The original training was performed and 
+results were manually moved to the experiments/dataset0 structure on April 1, 2025.
+
+DATASET STRUCTURE:
+  • Total classes: 4
+  • Total samples: 70553
+
+CLASS DISTRIBUTION:
+  • water: 19387 samples
+  • vegetation 2: 13906 samples
+  • vegetation 3: 18243 samples
+  • vegetation 1: 19017 samples
+
+IMAGE PROPERTIES:
+  • Unique dimensions: 1
+    - 32x32: 70553 images
+  • Image formats: {'JPEG': 70553}
+  • Channel counts: {3: 70553}
+
+MODEL COMPATIBILITY:
+  • Suitable for model: YES
+
+DATASET LOADER TEST:
+  • Successfully loaded: YES
+  • Dataset size: 55624 samples
+  • Classes: ['vegetation 1', 'vegetation 2', 'vegetation 3', 'water']
+  • Sample shape: (3, 32, 32)
+
+FINAL VERDICT:
+✅ Dataset is ready for wavelet model evaluation.
+
+================================================================================

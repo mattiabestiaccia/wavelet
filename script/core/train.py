@@ -60,6 +60,8 @@ def parse_args():
     
     # Output parameters
     parser.add_argument('--output-dir', type=str, default=None, help='Directory to save results')
+    parser.add_argument('--experiment-name', type=str, default=None, help='Name for this experiment (used in output path)')
+    parser.add_argument('--output-base', type=str, default=None, help='Base directory for storing results (default: results)')
     
     return parser.parse_args()
 
@@ -74,10 +76,29 @@ def main():
     set_seed(args.seed)
     
     # Configure output directory
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    
+    # Set output base directory
+    if args.output_base is None:
+        output_base = os.path.join(base_dir, "results")
+    else:
+        # Handle both absolute and relative paths
+        if os.path.isabs(args.output_base):
+            output_base = args.output_base
+        else:
+            output_base = os.path.join(base_dir, args.output_base)
+    
+    # Configure output directory
     if args.output_dir is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        args.output_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-                                    f"models/model_output_{args.num_classes}_classes_{timestamp}")
+        
+        # Use experiment name if provided
+        if args.experiment_name:
+            experiment_folder = f"{args.experiment_name}_{args.num_classes}_classes_{timestamp}"
+        else:
+            experiment_folder = f"model_output_{args.num_classes}_classes_{timestamp}"
+            
+        args.output_dir = os.path.join(output_base, "model_output", experiment_folder)
     
     # Create output directory if it doesn't exist
     os.makedirs(args.output_dir, exist_ok=True)
