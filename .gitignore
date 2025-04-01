@@ -17,19 +17,30 @@ models/*/*.pth
 
 # Dataset files
 datasets/*
-\!datasets/.gitkeep
-\!datasets/HPL_images
+!datasets/.gitkeep
+!datasets/HPL_images
 datasets/HPL_images/*
-\!datasets/HPL_images/.gitkeep
+!datasets/HPL_images/.gitkeep
 
 # Python cache
 __pycache__/
 *.py[cod]
 *$py.class
 
+# Distribution / packaging
+*.egg-info/
+dist/
+build/
+
 # Logs and outputs
 *.out
 *.log
+result/classification_result/
+result/elaborations/
+result/evaluation/
+
+# Processed cache
+script/processed_images_cache.json
 
 # IDE files
 .DS_Store
