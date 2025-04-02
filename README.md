@@ -31,118 +31,119 @@ pip install -r wavelet_venv/requirements.txt
 3. Install the library in development mode:
 
 ```bash
-pip install -e .
+# Addestramento con gestione esperimenti
+python script/core/train.py \
+    --dataset /path/to/dataset \
+    --num-classes 4 \
+    --epochs 90 \
+    --output-base experiments/dataset0 \
+    --experiment-name first_run
+
+# Valutazione nell'ambito dell'esperimento
+python script/core/evaluate.py \
+    --model-path experiments/dataset0/models/first_run/best_model.pth \
+    --dataset /path/to/dataset \
+    --output-base experiments/dataset0 \
+    --experiment-name first_run
 ```
 
-## Project Structure
+## Struttura degli Esperimenti
+
+Ogni esperimento è organizzato come segue:
 
 ```
-wavelet/
-├── datasets/                  # Dataset storage
-├── models/                    # Saved model checkpoints
-│   ├── model_output_4/        # 4-class model outputs
-│   └── model_output_7/        # 7-class model outputs
-├── script/                    # Scripts for training and inference
-│   ├── wst_train.py           # Training script
-│   ├── wst_predict.py         # Prediction script
-│   └── view_metrics.py        # Metrics visualization
-├── wavelet_lib/               # Core library
-│   ├── base.py                # Base configurations and utilities
-│   ├── datasets.py            # Dataset handling
-│   ├── models.py              # Neural network models
-│   ├── processors.py          # Image processing utilities
-│   ├── training.py            # Training tools
-│   └── visualization.py       # Visualization tools
-└── README.md
+experiments/dataset0/
+├── classification_result/    # Risultati classificazione
+├── dataset_info/            # Statistiche dataset
+├── evaluation/              # Metriche valutazione
+├── models/                  # Checkpoint modelli
+├── model_output/           # Output training
+├── visualization/          # Visualizzazioni
+└── README.md               # Documentazione esperimento
 ```
 
-## Basic Usage
-
-```python
-from wavelet_lib.base import Config
-from wavelet_lib.datasets import BalancedDataset, get_default_transform, create_data_loaders
-from wavelet_lib.models import create_model
-from wavelet_lib.training import Trainer, create_optimizer
-
-# Create configuration
-config = Config(
-    num_channels=3,
-    num_classes=4,
-    scattering_order=2
-)
-
-# Create dataset
-transform = get_default_transform()
-dataset = BalancedDataset('/path/to/dataset', transform=transform)
-train_loader, test_loader = create_data_loaders(dataset)
-
-# Create model
-model, scattering = create_model(config)
-
-# Train model
-optimizer = create_optimizer(model, config)
-trainer = Trainer(model, scattering, config.device, optimizer)
-results = trainer.train(train_loader, test_loader, config.epochs, save_path='model.pth')
-```
+Per istruzioni dettagliate sull'utilizzo, consultare il file [USAGE.md](USAGE.md).
 
 ## Training a Model
 
-To train a new model, use the `train.py` script:
+Per addestrare un nuovo modello all'interno di un esperimento, utilizzare lo script `train.py`:
 
 ```bash
-python script/core/train.py --dataset /path/to/dataset --num-classes 4 --epochs 90
+python script/core/train.py \
+    --dataset /path/to/dataset \
+    --num-classes 4 \
+    --epochs 90 \
+    --output-base experiments/dataset0 \
+    --experiment-name first_run
 ```
 
-Additional training parameters:
+Parametri di training aggiuntivi:
 
-- `--balance`: Balance class distribution
-- `--num-channels`: Number of input channels (default: 3)
-- `--batch-size`: Batch size (default: 128)
+- `--balance`: Bilancia la distribuzione delle classi
+- `--num-channels`: Numero di canali in input (default: 3)
+- `--batch-size`: Dimensione del batch (default: 128)
 - `--lr`: Learning rate (default: 0.1)
-- `--device`: Device to use (cuda or cpu)
-- `--output-dir`: Directory to save results
+- `--device`: Device da utilizzare (cuda o cpu)
+- `--output-base`: Directory base per l'esperimento
+- `--experiment-name`: Nome dell'esperimento
 
 ## Making Predictions
 
-To make predictions using a trained model:
+Per fare predizioni usando un modello addestrato all'interno di un esperimento:
 
 ```bash
-python script/core/predict.py --model-path /path/to/model.pth --image-path /path/to/image.jpg
+python script/core/predict.py \
+    --model-path experiments/dataset0/models/first_run/best_model.pth \
+    --image-path /path/to/image.jpg \
+    --output-base experiments/dataset0 \
+    --experiment-name first_run
 ```
 
-For tile-based classification of large images:
+Per la classificazione tile-based di immagini grandi:
 
 ```bash
-python script/core/predict.py --model-path /path/to/model.pth --image-path /path/to/image.jpg --tile-mode --tile-size 32
+python script/core/predict.py \
+    --model-path experiments/dataset0/models/first_run/best_model.pth \
+    --image-path /path/to/image.jpg \
+    --tile-mode \
+    --tile-size 32 \
+    --output-base experiments/dataset0 \
+    --experiment-name first_run
 ```
 
-Additional prediction parameters:
+Parametri di predizione aggiuntivi:
 
-- `--tile-mode`: Enable tile-based classification
-- `--tile-size`: Size of tiles (default: 32)
-- `--confidence-threshold`: Confidence threshold for visualization (default: 0.7)
-- `--device`: Device to use (cuda or cpu)
-- `--output-dir`: Directory to save results
+- `--tile-mode`: Abilita la classificazione tile-based
+- `--tile-size`: Dimensione dei tile (default: 32)
+- `--confidence-threshold`: Soglia di confidenza per la visualizzazione (default: 0.7)
+- `--device`: Device da utilizzare (cuda o cpu)
+- `--output-base`: Directory base per l'esperimento
+- `--experiment-name`: Nome dell'esperimento
 
 ## Evaluation
 
-To evaluate a model on a test dataset:
+Per valutare un modello su un dataset di test all'interno di un esperimento:
 
 ```bash
-python script/core/evaluate.py --model-path /path/to/model.pth --dataset /path/to/dataset
+python script/core/evaluate.py \
+    --model-path experiments/dataset0/models/first_run/best_model.pth \
+    --dataset /path/to/dataset \
+    --output-base experiments/dataset0 \
+    --experiment-name first_run
 ```
 
 ## Visualization
 
-To visualize training metrics from a saved model:
+Per visualizzare le metriche di training da un esperimento:
 
 ```bash
-python script/core/visualize.py metrics --model-dir models/model_output_4_classes_YYYYMMDD_HHMMSS
+python script/core/visualize.py metrics \
+    --model-dir experiments/dataset0/model_output/first_run
 ```
 
 ## Dataset Inspection
 
-To check if a dataset is properly formatted for the model:
+Per verificare se un dataset è formattato correttamente per il modello:
 
 ```bash
 python script/utility/dataset_inspector.py --dataset /path/to/dataset --expected-dims 32x32
@@ -150,7 +151,7 @@ python script/utility/dataset_inspector.py --dataset /path/to/dataset --expected
 
 ## Example Workflow
 
-1. Prepare your dataset with class subdirectories:
+1. Prepara il tuo dataset con le sottodirectory delle classi:
 
 ```
 dataset/
@@ -165,34 +166,49 @@ dataset/
 └── ...
 ```
 
-2. Check if your dataset is suitable for the model:
+2. Verifica se il dataset è adatto al modello:
 
 ```bash
 python script/utility/dataset_inspector.py --dataset /path/to/dataset --expected-dims 32x32
 ```
 
-3. Train a model:
+3. Addestra un modello in un nuovo esperimento:
 
 ```bash
-python script/core/train.py --dataset /path/to/dataset --num-classes 4 --epochs 90 --balance
+python script/core/train.py \
+    --dataset /path/to/dataset \
+    --num-classes 4 \
+    --epochs 90 \
+    --balance \
+    --output-base experiments/dataset0 \
+    --experiment-name first_run
 ```
 
-4. View training metrics:
+4. Visualizza le metriche di training:
 
 ```bash
-python script/core/visualize.py metrics --model-dir models/model_output_4_classes_YYYYMMDD_HHMMSS
+python script/core/visualize.py metrics \
+    --model-dir experiments/dataset0/model_output/first_run
 ```
 
-5. Evaluate the model on test data:
+5. Valuta il modello sui dati di test:
 
 ```bash
-python script/core/evaluate.py --model-path models/model_output_4_classes_YYYYMMDD_HHMMSS/best_model.pth --dataset /path/to/dataset
+python script/core/evaluate.py \
+    --model-path experiments/dataset0/models/first_run/best_model.pth \
+    --dataset /path/to/dataset \
+    --output-base experiments/dataset0 \
+    --experiment-name first_run
 ```
 
-6. Make predictions on new images:
+6. Fai predizioni su nuove immagini:
 
 ```bash
-python script/core/predict.py --model-path models/model_output_4_classes_YYYYMMDD_HHMMSS/best_model.pth --image-path /path/to/test_image.jpg
+python script/core/predict.py \
+    --model-path experiments/dataset0/models/first_run/best_model.pth \
+    --image-path /path/to/test_image.jpg \
+    --output-base experiments/dataset0 \
+    --experiment-name first_run
 ```
 
 ## Requirements

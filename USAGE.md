@@ -1,202 +1,135 @@
 # Wavelet Scattering Transform (WST) - Guida all'uso
 
-Questa guida fornisce istruzioni dettagliate per l'uso del framework Wavelet Scattering Transform.
+## Gestione degli Esperimenti
 
-## Prerequisiti
+Il framework è organizzato per gestire esperimenti multipli. Ogni esperimento ha la propria directory con tutti i risultati e le metriche associate.
 
-Assicurati di aver installato tutte le dipendenze necessarie:
-
-```bash
-# Attiva l'ambiente virtuale
-source wavelet_venv/bin/activate
-
-# Installa le dipendenze
-pip install -r wavelet_venv/requirements.txt
-
-# Installa il pacchetto in modalità sviluppatore
-pip install -e .
-```
-
-## Importante: Esecuzione degli script
-
-**NOTA: Tutti gli script devono essere eseguiti dalla directory principale del progetto (wavelet/)!**
+### Creazione Nuovo Esperimento
 
 ```bash
-# Posizionati sempre nella directory principale del progetto
-cd /home/brus/Projects/wavelet
-
-# Poi esegui gli script dalla directory principale
-python script/core/train.py [parametri]
-```
-
-## Struttura degli script
-
-I nostri script sono organizzati cosi:
-
-```
-script/
-├── core/           # Script principali
-│   ├── train.py    # Addestramento dei modelli
-│   ├── evaluate.py # Valutazione dei modelli
-│   ├── predict.py  # Predizione con modelli
-│   └── visualize.py # Visualizzazione e analisi
-├── utils/          # Utility
-│   ├── data_utils.py  # Utilità per dataset
-│   └── model_utils.py # Utilità per modelli
-└── notebooks/      # Jupyter notebooks di esempio
-```
-
-## Addestramento di un modello
-
-Per addestrare un nuovo modello, esegui:
-
-```bash
-python script/core/train.py --dataset /path/to/dataset --num-classes N --epochs E --balance
+python script/core/train.py \
+    --dataset /path/to/dataset \
+    --num-classes 4 \
+    --epochs 90 \
+    --output-base experiments/dataset0 \
+    --experiment-name first_run \
+    --balance
 ```
 
 Parametri principali:
-- `--dataset`: Percorso alla directory del dataset (con sottodirectory per classe)
-- `--num-classes`: Numero di classi (default: 4)
-- `--epochs`: Numero di epoche di addestramento (default: 90)
-- `--balance`: Bilancia le classi nel dataset (opzionale)
-- `--output-dir`: Directory per salvare i risultati (opzionale)
+- `--dataset`: Percorso al dataset
+- `--output-base`: Directory base dell'esperimento
+- `--experiment-name`: Nome dell'esperimento
+- `--num-classes`: Numero di classi
+- `--epochs`: Numero di epoche
+- `--balance`: Bilancia le classi
 
-Esempio:
-```bash
-python script/core/train.py --dataset /home/brus/Projects/wavelet/datasets/HPL_images/custom_dataset --num-classes 4 --epochs 40 --balance
-```
-
-## Predizione su nuove immagini
-
-Per fare predizioni usando un modello addestrato:
+### Valutazione nell'Esperimento
 
 ```bash
-python script/core/predict.py --model-path /path/to/model.pth --image-path /path/to/image.jpg
+python script/core/evaluate.py \
+    --model-path experiments/dataset0/models/first_run/best_model.pth \
+    --dataset /path/to/dataset \
+    --output-base experiments/dataset0 \
+    --experiment-name first_run
 ```
 
-Per la classificazione a tile di immagini grandi:
+### Predizione nell'Esperimento
 
 ```bash
-python script/core/predict.py --model-path /path/to/model.pth --image-path /path/to/image.jpg --tile-mode --tile-size 32
+# Predizione singola immagine
+python script/core/predict.py \
+    --model-path experiments/dataset0/models/first_run/best_model.pth \
+    --image-path /path/to/image.jpg \
+    --output-base experiments/dataset0 \
+    --experiment-name first_run
+
+# Predizione con tile
+python script/core/predict.py \
+    --model-path experiments/dataset0/models/first_run/best_model.pth \
+    --image-path /path/to/image.jpg \
+    --tile-mode \
+    --tile-size 32 \
+    --output-base experiments/dataset0 \
+    --experiment-name first_run
 ```
 
-## Valutazione di un modello
-
-Per valutare completamente le prestazioni di un modello su un dataset:
+### Visualizzazione Risultati
 
 ```bash
-python script/core/evaluate.py --model-path /path/to/model.pth --dataset /path/to/dataset
+# Metriche di training
+python script/core/visualize.py metrics \
+    --model-dir experiments/dataset0/model_output/first_run
+
+# Confronto tra esperimenti
+python script/core/visualize.py metrics \
+    --model-dir experiments/dataset0/model_output/first_run \
+    --compare-with experiments/dataset1/model_output/second_run
 ```
 
-Parametri principali:
-- `--model-path`: Percorso al file del modello addestrato
-- `--dataset`: Percorso alla directory del dataset (con sottodirectory per classe)
-- `--balance`: Bilancia le classi nel dataset per la valutazione (opzionale)
-- `--output-dir`: Directory per salvare i risultati (opzionale)
+## Workflow Tipico
 
-Esempio:
+1. Crea un nuovo esperimento:
 ```bash
-python script/core/evaluate.py --model-path models/model_output_4/best_model.pth --dataset datasets/HPL_images/custom_dataset --balance
+python script/core/train.py \
+    --dataset /path/to/dataset \
+    --output-base experiments/dataset0 \
+    --experiment-name first_run
 ```
 
-## Visualizzazione e analisi
-
-Lo script di visualizzazione supporta diversi comandi:
-
+2. Valuta il modello:
 ```bash
-# Visualizzazione delle metriche di addestramento
-python script/core/visualize.py metrics --model-dir models/model_output_4_classes_YYYYMMDD_HHMMSS
-
-# Visualizzazione di campioni del dataset con predizioni
-python script/core/visualize.py samples --model-path /path/to/model.pth --dataset /path/to/dataset
-
-# Visualizzazione distribuzione delle classi
-python script/core/visualize.py distribution --dataset /path/to/dataset
+python script/core/evaluate.py \
+    --model-path experiments/dataset0/models/first_run/best_model.pth \
+    --output-base experiments/dataset0 \
+    --experiment-name first_run
 ```
 
-## Utility per dataset e modelli
-
-Per analisi avanzate, abbiamo anche utility specifiche:
-
+3. Analizza i risultati:
 ```bash
-# Analisi di un dataset
-python -c "from script.utils.data_utils import analyze_dataset; analyze_dataset('/path/to/dataset')"
-
-# Analisi di un modello
-python -c "from script.utils.model_utils import analyze_model; analyze_model('/path/to/model.pth')"
+python script/core/visualize.py metrics \
+    --model-dir experiments/dataset0/model_output/first_run
 ```
 
-## Struttura comune di un dataset
+## Confronto tra Esperimenti
 
-Il dataset deve avere la seguente struttura:
+### Stesso Modello, Dataset Diverso
+```bash
+# Training su nuovo dataset
+python script/core/train.py \
+    --dataset /path/to/new_dataset \
+    --output-base experiments/dataset1 \
+    --experiment-name wst_run
 
+# Confronto risultati
+python script/core/visualize.py metrics \
+    --model-dir experiments/dataset0/model_output/first_run \
+    --compare-with experiments/dataset1/model_output/wst_run
 ```
-dataset/
-├── classe1/
-│   ├── immagine1.jpg
-│   ├── immagine2.jpg
-│   └── ...
-├── classe2/
-│   ├── immagine1.jpg
-│   ├── immagine2.jpg
-│   └── ...
-└── ...
+
+### Dataset Stesso, Modello Diverso
+```bash
+# Training con parametri diversi
+python script/core/train.py \
+    --dataset /path/to/dataset \
+    --output-base experiments/dataset0 \
+    --experiment-name second_run \
+    --model-type mlp
+
+# Confronto risultati
+python script/core/visualize.py metrics \
+    --model-dir experiments/dataset0/model_output/first_run \
+    --compare-with experiments/dataset0/model_output/second_run
 ```
 
-## Flusso di lavoro tipico
-
-1. Prepara il dataset nella struttura corretta
-2. Addestra il modello:
-   ```bash
-   python script/core/train.py --dataset /path/to/dataset --num-classes 4 --epochs 40 --balance
-   ```
-
-3. Visualizza le metriche di addestramento:
-   ```bash
-   python script/core/visualize.py metrics --model-dir models/model_output_4_classes_YYYYMMDD_HHMMSS
-   ```
-
-4. Valuta il modello sul dataset:
-   ```bash
-   python script/core/evaluate.py --model-path models/model_output_4_classes_YYYYMMDD_HHMMSS/best_model.pth --dataset /path/to/dataset
-   ```
-
-5. Fai predizioni su nuove immagini:
-   ```bash
-   python script/core/predict.py --model-path models/model_output_4_classes_YYYYMMDD_HHMMSS/best_model.pth --image-path /path/to/new_image.jpg
-   ```
-
-## Risoluzione dei problemi
+## Risoluzione Problemi
 
 ### Errore: "No such file or directory"
-Se riscontri errori del tipo "No such file or directory", verifica di:
-1. Eseguire gli script dalla directory principale del progetto (wavelet/)
-2. Fornire percorsi assoluti corretti ai dataset e ai file di modello
-3. Avere attivato l'ambiente virtuale corretto
+- Verificare che la directory dell'esperimento esista
+- Usare percorsi assoluti
+- Verificare la struttura delle directory
 
-Esempio di esecuzione corretta:
-```bash
-cd /home/brus/Projects/wavelet
-python script/core/train.py --dataset /home/brus/Projects/wavelet/datasets/HPL_images/custom_dataset --num-classes 4
-```
-
-### Errore: "shape '[-1, 12, 8, 8]' is invalid for input of size..."
-Questo errore può verificarsi quando c'è una discrepanza tra la dimensione dell'output della trasformata scattering e quella attesa dal modello. Il problema è stato risolto nella versione più recente, ma se lo riscontri ancora:
-1. Assicurati di utilizzare gli stessi parametri scattering (J=2, shape=(32, 32), max_order=2) per addestramento e inferenza
-2. Verifica che le immagini abbiano la dimensione corretta (32x32 pixel)
-3. Utilizza lo script `script/utility/dataset_inspector.py` per verificare la compatibilità del dataset:
-```bash
-python script/utility/dataset_inspector.py --dataset /path/to/dataset --expected-dims 32x32
-```
-
-### Errore: "CUDA out of memory"
-Per problemi di memoria, prova a ridurre il batch size:
-```bash
-python script/core/train.py --dataset /path/to/dataset --batch-size 64
-```
-
-### Errore: "ModuleNotFoundError: No module named 'torch'"
-Se ricevi questo errore, assicurati di:
-1. Aver attivato l'ambiente virtuale: `source wavelet_venv/bin/activate`
-2. Aver installato tutte le dipendenze: `pip install -r wavelet_venv/requirements.txt`
-3. Aver installato il pacchetto in modalità sviluppatore: `pip install -e .`
+### Errore: "ModuleNotFoundError"
+- Verificare l'attivazione dell'ambiente virtuale
+- Reinstallare le dipendenze
+- Verificare l'installazione in modalità sviluppo
