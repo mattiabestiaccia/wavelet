@@ -58,10 +58,25 @@ class TileMaskCreator:
             image: Immagine su cui disegnare la griglia
         """
         h, w = image.shape[:2]
+        
+        # Controlla se l'immagine è in scala di grigi
+        is_grayscale = len(image.shape) == 2
+        
+        # Imposta il colore della griglia in base al tipo di immagine
+        if is_grayscale:
+            grid_color = 200  # Grigio chiaro per immagini in scala di grigi
+            temp_image = image
+        else:
+            grid_color = (200, 200, 200)  # Grigio chiaro per immagini a colori
+            temp_image = image
+        
+        # Disegna le linee verticali
         for i in range(0, w, self.tile_size):
-            cv2.line(image, (i, 0), (i, h), (200, 200, 200), 1)
+            cv2.line(temp_image, (i, 0), (i, h), grid_color, 1)
+        
+        # Disegna le linee orizzontali
         for j in range(0, h, self.tile_size):
-            cv2.line(image, (0, j), (w, j), (200, 200, 200), 1)
+            cv2.line(temp_image, (0, j), (w, j), grid_color, 1)
 
     def mask_selected_tiles(self, image: np.ndarray, selected_tiles: Set[Tuple[int, int]]) -> np.ndarray:
         """
@@ -75,12 +90,21 @@ class TileMaskCreator:
             Immagine con i tiles selezionati oscurati
         """
         masked_image = image.copy()
+        
+        # Assicurati che l'immagine sia in formato BGR per OpenCV
+        if len(masked_image.shape) == 2:
+            # Converti scala di grigi in BGR
+            masked_image = cv2.cvtColor(masked_image, cv2.COLOR_GRAY2BGR)
+            
+        # Imposta un colore di sovrapposizione appropriato
+        overlay_color = (50, 50, 50)  # BGR per OpenCV
+            
         for (tx, ty) in selected_tiles:
             cv2.rectangle(
                 masked_image,
                 (tx * self.tile_size, ty * self.tile_size),
                 ((tx + 1) * self.tile_size, (ty + 1) * self.tile_size),
-                (50, 50, 50), -1
+                overlay_color, -1
             )
         return masked_image
 
@@ -95,7 +119,19 @@ class TileMaskCreator:
         x, y = cursor_tile
         pt1 = (x * self.tile_size, y * self.tile_size)
         pt2 = ((x + 1) * self.tile_size, (y + 1) * self.tile_size)
-        cv2.rectangle(image, pt1, pt2, (0, 0, 255), 2)  # bordo rosso
+        
+        # Controlla se l'immagine è in scala di grigi
+        if len(image.shape) == 2:
+            # Per immagini in scala di grigi, converti temporaneamente in BGR
+            temp_image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+            cv2.rectangle(temp_image, pt1, pt2, (0, 0, 255), 2)  # bordo rosso
+            # Converti di nuovo in scala di grigi e copia nell'immagine originale
+            # Usa un valore chiaro per il bordo in scala di grigi
+            gray = cv2.cvtColor(temp_image, cv2.COLOR_BGR2GRAY)
+            np.copyto(image, gray)
+        else:
+            # Per immagini a colori, disegna direttamente
+            cv2.rectangle(image, pt1, pt2, (0, 0, 255), 2)  # bordo rosso
 
     def draw_preview_tiles(self, image: np.ndarray, preview_tiles: Set[Tuple[int, int]]) -> None:
         """
@@ -105,13 +141,34 @@ class TileMaskCreator:
             image: Immagine su cui disegnare l'anteprima
             preview_tiles: Set di coordinate (x, y) dei tiles in anteprima
         """
-        overlay = image.copy()
+        # Assicurati che l'immagine sia in formato BGR per OpenCV
+        is_grayscale = len(image.shape) == 2
+        
+        if is_grayscale:
+            # Converti temporaneamente in BGR per disegnare rettangoli colorati
+            temp_image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+            overlay = temp_image.copy()
+        else:
+            overlay = image.copy()
+            
         alpha = 0.4  # trasparenza per il verde
+        highlight_color = (0, 255, 0)  # Verde in BGR
+        
         for (tx, ty) in preview_tiles:
             pt1 = (tx * self.tile_size, ty * self.tile_size)
             pt2 = ((tx + 1) * self.tile_size, (ty + 1) * self.tile_size)
-            cv2.rectangle(overlay, pt1, pt2, (0, 255, 0), -1)
-        cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0, image)
+            cv2.rectangle(overlay, pt1, pt2, highlight_color, -1)
+            
+        if is_grayscale:
+            # Applica l'overlay all'immagine temporanea e poi riconverti in scala di grigi
+            cv2.addWeighted(overlay, alpha, temp_image, 1 - alpha, 0, temp_image)
+            # Converti in scala di grigi mantenendo solo il canale verde
+            result = cv2.cvtColor(temp_image, cv2.COLOR_BGR2GRAY)
+            # Copia il risultato nell'immagine originale
+            np.copyto(image, result)
+        else:
+            # Applica l'overlay direttamente all'immagine originale
+            cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0, image)
 
     def compute_tiles_in_rect(
         self,
@@ -201,6 +258,22 @@ class TileMaskCreator:
         self.selected_tiles = set() if previous_selection is None else previous_selection.copy()
         self.preview_tiles = set()
         self.cursor_tile = [0, 0]
+        
+        # Assicurati che l'immagine sia nel formato corretto per la visualizzazione con OpenCV
+        # Se è un'immagine multibanda (>3 canali), convertila in RGB per la visualizzazione
+        if len(sub_img.shape) == 3 and sub_img.shape[2] > 3:
+            # Prendi solo le prime 3 bande per la visualizzazione
+            vis_img = sub_img[:, :, :3].copy()
+            # Normalizza ciascuna banda
+            for i in range(3):
+                band = vis_img[:, :, i]
+                if band.max() > 0:
+                    vis_img[:, :, i] = (band / band.max() * 255).astype(np.uint8)
+            sub_img = vis_img
+        # Se l'immagine è in scala di grigi, convertila in RGB per avere highlights colorati
+        elif len(sub_img.shape) == 2:
+            sub_img = cv2.cvtColor(sub_img, cv2.COLOR_GRAY2BGR)
+        
         sub_img_shape = sub_img.shape
 
         window_name = f'Sottofinestra {subwin_index}'
@@ -319,6 +392,10 @@ class TileMaskCreator:
                 with rasterio.open(str(image_path)) as src:
                     # Leggi tutte le bande
                     image = src.read()
+                    num_bands = image.shape[0]
+                    
+                    print(f"Caricata immagine con {num_bands} bande, dimensioni: {image.shape}")
+                    
                     # Riorganizza le dimensioni da (bands, height, width) a (height, width, bands)
                     image = np.transpose(image, (1, 2, 0))
                     
@@ -327,20 +404,64 @@ class TileMaskCreator:
                         image = image[:, :, 0]
                     
                     # Se multiband, converti in RGB per la visualizzazione
-                    # Prendi le prime 3 bande se disponibili, altrimenti usa la prima banda replicata
                     elif image.shape[2] > 3:
-                        # Prendi le prime 3 bande per la visualizzazione
-                        vis_img = image[:, :, :3].copy()
-                        # Normalizza ciascuna banda per la visualizzazione
-                        for i in range(3):
-                            band = vis_img[:, :, i]
-                            if band.max() > 0:
-                                vis_img[:, :, i] = (band / band.max() * 255).astype(np.uint8)
+                        print("Convertendo immagine multibanda in RGB per visualizzazione...")
+                        # Crea una visualizzazione RGB usando le prime 3 bande o banda composita
+                        vis_img = np.zeros((image.shape[0], image.shape[1], 3), dtype=np.uint8)
+                        
+                        # Seleziona le bande da visualizzare (per immagini satellitari)
+                        # Un approccio comune è usare le bande Near-IR, Red, Green
+                        # Se non siamo sicuri delle bande, usiamo le prime 3
+                        bands_to_use = min(3, image.shape[2])
+                        
+                        for i in range(bands_to_use):
+                            # Estrai banda e normalizza
+                            band = image[:, :, i].astype(np.float32)
+                            
+                            # Applica stretching del contrasto con clipping dei valori estremi
+                            p2, p98 = np.percentile(band, (2, 98))
+                            if p98 > p2:  # Evita divisione per zero
+                                band_norm = np.clip(band, p2, p98)
+                                band_norm = (band_norm - p2) / (p98 - p2)
+                            else:
+                                # Normalizzazione standard se i percentili sono uguali
+                                band_min, band_max = band.min(), band.max()
+                                if band_max > band_min:
+                                    band_norm = (band - band_min) / (band_max - band_min)
+                                else:
+                                    band_norm = np.zeros_like(band)
+                            
+                            # Scala a 0-255 e converti in uint8
+                            vis_img[:, :, i] = (band_norm * 255).astype(np.uint8)
+                        
                         image = vis_img
-                    
+                        print(f"Immagine convertita in RGB, dimensioni: {image.shape}")
+                    elif image.shape[2] == 3:
+                        # Per immagini già RGB, normalizza ciascun canale
+                        vis_img = np.zeros_like(image)
+                        for i in range(3):
+                            band = image[:, :, i].astype(np.float32)
+                            # Normalizzazione con stretching del contrasto
+                            p2, p98 = np.percentile(band, (2, 98))
+                            if p98 > p2:
+                                band_norm = np.clip(band, p2, p98)
+                                band_norm = (band_norm - p2) / (p98 - p2)
+                            else:
+                                band_min, band_max = band.min(), band.max()
+                                if band_max > band_min:
+                                    band_norm = (band - band_min) / (band_max - band_min)
+                                else:
+                                    band_norm = np.zeros_like(band)
+                            
+                            vis_img[:, :, i] = (band_norm * 255).astype(np.uint8)
+                        
+                        image = vis_img
+                        
                     return image
             except Exception as e:
                 print(f"Errore nel caricamento con rasterio: {e}")
+                import traceback
+                traceback.print_exc()
                 # Fallback a OpenCV
                 self.use_rasterio = False
         
@@ -397,10 +518,17 @@ class TileMaskCreator:
 
         # Processa le sottofinestre con la possibilità di tornare indietro
         current_subwin_idx = 0
-
+        
+        # Converti l'immagine in un formato visualizzabile per OpenCV se necessario
+        # Questo è fatto qui una volta, invece che per ogni sottofinestra
+        if len(full_img.shape) == 3 and full_img.shape[2] > 3:
+            print(f"Immagine multibanda rilevata con {full_img.shape[2]} bande. Visualizzazione ottimizzata.")
+            # Forza la visualizzazione come RGB con stretching del contrasto per garantire la visibilità
+            # Nota: l'immagine è già stata normalizzata nel metodo load_image
+        
         while 0 <= current_subwin_idx < total_subwins:
             x_start, y_start, x_end, y_end = subwin_coords[current_subwin_idx]
-            sub_img = full_img[y_start:y_end, x_start:x_end]
+            sub_img = full_img[y_start:y_end, x_start:x_end].copy()  # Creiamo una copia per evitare modifiche all'originale
 
             # Recupera le selezioni precedenti per questa sottofinestra (se esistono)
             previous_selection = subwin_selections[current_subwin_idx]
@@ -497,7 +625,20 @@ def main():
 
         # Visualizza la maschera finale
         cv2.namedWindow("Maschera finale", cv2.WINDOW_NORMAL)
-        cv2.imshow("Maschera finale", mask)
+        
+        # Assicurati che la maschera sia visualizzabile (se è un array di un solo canale)
+        if len(mask.shape) == 2:
+            # Per migliorare la visualizzazione, crea una versione colorata della maschera
+            # bianco -> rosso per una migliore visibilità
+            vis_mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
+            # Mantieni solo il canale rosso
+            vis_mask[:, :, 0] = 0  # B
+            vis_mask[:, :, 1] = 0  # G
+            # R è già impostato con il valore della maschera
+            cv2.imshow("Maschera finale", vis_mask)
+        else:
+            cv2.imshow("Maschera finale", mask)
+            
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
