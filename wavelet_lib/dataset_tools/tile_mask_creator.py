@@ -3,12 +3,14 @@
 Modulo per la creazione interattiva di maschere di selezione dei tiles.
 Fornisce strumenti per dividere un'immagine in sottofinestre e selezionare
 interattivamente i tiles di interesse, generando una maschera binaria.
+Supporta sia immagini RGB standard che immagini multibanda.
 """
 
 import cv2
 import numpy as np
 import os
 import math
+import rasterio
 from pathlib import Path
 from typing import Set, Tuple, List, Dict, Optional, Union
 
@@ -17,12 +19,14 @@ class TileMaskCreator:
     Classe per la creazione interattiva di maschere di selezione dei tiles.
     Permette di dividere un'immagine in sottofinestre e selezionare
     interattivamente i tiles di interesse, generando una maschera binaria.
+    Supporta sia immagini RGB standard che immagini multibanda.
     """
 
     def __init__(
         self,
         tile_size: int = 32,
-        tiles_per_subwin: int = 30
+        tiles_per_subwin: int = 30,
+        use_rasterio: bool = True
     ):
         """
         Inizializza il creatore di maschere per tiles.
@@ -30,11 +34,13 @@ class TileMaskCreator:
         Args:
             tile_size: Dimensione di un singolo tile in pixel
             tiles_per_subwin: Numero di tiles per lato in una sottofinestra
+            use_rasterio: Se True, usa rasterio per il caricamento delle immagini (supporta multibanda)
         """
         self.tile_size = tile_size
         self.tiles_per_subwin = tiles_per_subwin
         self.subwin_width = tiles_per_subwin * tile_size
         self.subwin_height = tiles_per_subwin * tile_size
+        self.use_rasterio = use_rasterio
 
         # Variabili di stato per la selezione con il mouse
         self.drawing = False
@@ -296,6 +302,54 @@ class TileMaskCreator:
                 mask[abs_y:abs_y + self.tile_size, abs_x:abs_x + self.tile_size] = 255
         return mask
 
+    def load_image(self, image_path: Union[str, Path]) -> np.ndarray:
+        """
+        Carica un'immagine dal disco.
+
+        Args:
+            image_path: Percorso dell'immagine
+
+        Returns:
+            Immagine caricata come array numpy
+        """
+        image_path = Path(image_path)
+
+        if self.use_rasterio:
+            try:
+                with rasterio.open(str(image_path)) as src:
+                    # Leggi tutte le bande
+                    image = src.read()
+                    # Riorganizza le dimensioni da (bands, height, width) a (height, width, bands)
+                    image = np.transpose(image, (1, 2, 0))
+                    
+                    # Se l'immagine ha una sola banda, adattala per OpenCV
+                    if image.shape[2] == 1:
+                        image = image[:, :, 0]
+                    
+                    # Se multiband, converti in RGB per la visualizzazione
+                    # Prendi le prime 3 bande se disponibili, altrimenti usa la prima banda replicata
+                    elif image.shape[2] > 3:
+                        # Prendi le prime 3 bande per la visualizzazione
+                        vis_img = image[:, :, :3].copy()
+                        # Normalizza ciascuna banda per la visualizzazione
+                        for i in range(3):
+                            band = vis_img[:, :, i]
+                            if band.max() > 0:
+                                vis_img[:, :, i] = (band / band.max() * 255).astype(np.uint8)
+                        image = vis_img
+                    
+                    return image
+            except Exception as e:
+                print(f"Errore nel caricamento con rasterio: {e}")
+                # Fallback a OpenCV
+                self.use_rasterio = False
+        
+        # Usa OpenCV per immagini standard
+        image = cv2.imread(str(image_path))
+        if image is None:
+            raise FileNotFoundError(f"Errore: il file {image_path} non esiste o non è accessibile.")
+        return image
+        
     def create_mask(
         self,
         image_path: Union[str, Path],
@@ -313,7 +367,7 @@ class TileMaskCreator:
             Maschera binaria con i tiles selezionati
         """
         image_path = Path(image_path)
-        full_img = cv2.imread(str(image_path))
+        full_img = self.load_image(image_path)
         if full_img is None:
             raise FileNotFoundError(f"Errore: il file {image_path} non esiste o non è accessibile.")
 
@@ -379,7 +433,26 @@ class TileMaskCreator:
         if output_mask_path:
             output_mask_path = Path(output_mask_path)
             os.makedirs(output_mask_path.parent, exist_ok=True)
-            cv2.imwrite(str(output_mask_path), mask)
+            
+            # Se il formato di output è TIFF e stiamo usando rasterio
+            if self.use_rasterio and str(output_mask_path).lower().endswith(('.tif', '.tiff')):
+                # Salva come GeoTIFF usando rasterio
+                # Prepara il profilo per il file di output
+                profile = {
+                    'driver': 'GTiff',
+                    'height': mask.shape[0],
+                    'width': mask.shape[1],
+                    'count': 1,
+                    'dtype': mask.dtype,
+                    'compress': 'lzw'
+                }
+                
+                with rasterio.open(str(output_mask_path), 'w', **profile) as dst:
+                    dst.write(mask[np.newaxis, :, :])
+            else:
+                # Altrimenti, usa OpenCV per formati standard
+                cv2.imwrite(str(output_mask_path), mask)
+                
             print(f"Maschera salvata in {output_mask_path}")
 
         return mask
@@ -390,20 +463,30 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description='Crea una maschera di selezione dei tiles da un\'immagine')
-    parser.add_argument('input_image', type=str,
-                        help='Percorso dell\'immagine da processare [OBBLIGATORIO]')
-    parser.add_argument('--output-mask', type=str,
+    parser.add_argument('input_image', 
+                        type=str,
+                        help='Percorso dell\'immagine da processare [NECESSARY]')
+    parser.add_argument('--output-mask', 
+                        type=str,
                         help='Percorso dove salvare la maschera risultante')
-    parser.add_argument('--tile-size', type=int, default=32,
+    parser.add_argument('--tile-size', 
+                        type=int, 
+                        default=32,
                         help='Dimensione di un singolo tile in pixel [default=32]')
-    parser.add_argument('--tiles-per-subwin', type=int, default=30,
+    parser.add_argument('--tiles-per-subwin', 
+                        type=int, 
+                        default=30,
                         help='Numero di tiles per lato in una sottofinestra [default=30]')
+    parser.add_argument('--no-rasterio',
+                        action='store_true',
+                        help='Disabilita l\'uso di rasterio per il caricamento delle immagini [default=False]')
 
     args = parser.parse_args()
 
     mask_creator = TileMaskCreator(
         tile_size=args.tile_size,
-        tiles_per_subwin=args.tiles_per_subwin
+        tiles_per_subwin=args.tiles_per_subwin,
+        use_rasterio=not args.no_rasterio
     )
 
     try:

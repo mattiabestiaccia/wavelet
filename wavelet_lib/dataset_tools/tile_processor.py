@@ -243,7 +243,8 @@ class TileProcessor:
         tile_size: Optional[int] = None,
         overlap: int = 0,
         min_valid_fraction: float = 0.0,
-        format: str = 'jpg'
+        format: str = 'jpg',
+        class_name: Optional[str] = None
     ) -> List[Path]:
         """
         Processa un'immagine completa, estraendo e salvando i tiles.
@@ -256,6 +257,7 @@ class TileProcessor:
             overlap: Sovrapposizione tra tiles adiacenti in pixel
             min_valid_fraction: Frazione minima di pixel validi per considerare un tile
             format: Formato di output ('jpg', 'png', 'tif')
+            class_name: Nome della classe per organizzare i tiles in sottocartelle quando dataset_mode=True
 
         Returns:
             Lista dei percorsi dei files salvati
@@ -289,10 +291,17 @@ class TileProcessor:
 
         # Salva i tiles
         base_filename = image_path.stem
+        
+        # Se in modalità dataset e class_name è specificato, crea sottocartella per la classe
+        final_output_dir = self.output_dir
+        if self.dataset_mode and class_name is not None:
+            final_output_dir = self.output_dir / class_name
+            os.makedirs(final_output_dir, exist_ok=True)
+            
         saved_files = self.save_tiles(
             tiles,
             base_filename,
-            self.output_dir,
+            final_output_dir,
             format
         )
 
