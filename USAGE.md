@@ -13,7 +13,8 @@ python script/core/train.py \
     --epochs 90 \
     --output-base experiments/dataset0 \
     --experiment-name first_run \
-    --balance
+    --balance \
+    --num-channels 3  # Specificare per immagini multibanda
 ```
 
 Parametri principali:
@@ -23,6 +24,7 @@ Parametri principali:
 - `--num-classes`: Numero di classi
 - `--epochs`: Numero di epoche
 - `--balance`: Bilancia le classi
+- `--num-channels`: Numero di canali dell'immagine (default: 3, max: 10)
 
 ### Valutazione nell'Esperimento
 
@@ -52,6 +54,14 @@ python script/core/predict.py \
     --tile-size 32 \
     --output-base experiments/dataset0 \
     --experiment-name first_run
+
+# Predizione su immagine multibanda
+python script/core/predict.py \
+    --model-path experiments/dataset0/models/first_run/best_model.pth \
+    --image-path /path/to/multiband_image.tif \
+    --output-base experiments/dataset0 \
+    --experiment-name first_run \
+    --num-channels 5  # Specificare il numero di canali dell'immagine
 ```
 
 ### Visualizzazione Risultati
@@ -122,6 +132,28 @@ python script/core/visualize.py metrics \
     --compare-with experiments/dataset0/model_output/second_run
 ```
 
+## Utilizzo con Immagini Multibanda
+
+### Creazione Immagini Multibanda
+È possibile creare file TIFF multibanda a partire da immagini monobanda utilizzando lo strumento `multiband_creator.py`:
+
+```bash
+python -m wavelet_lib.image_tools.multiband_creator \
+    input_dir output_dir \
+    --max-bands 10 \
+    --compression lzw
+```
+
+### Visualizzazione Immagini Multibanda
+Per visualizzare immagini multibanda è possibile utilizzare lo strumento di visualizzazione:
+
+```bash
+python -m wavelet_lib.image_tools.channel_visualizer \
+    path/to/multiband_image.tif \
+    --separate \
+    --figure-size 15 10
+```
+
 ## Risoluzione Problemi
 
 ### Errore: "No such file or directory"
@@ -133,3 +165,7 @@ python script/core/visualize.py metrics \
 - Verificare l'attivazione dell'ambiente virtuale
 - Reinstallare le dipendenze
 - Verificare l'installazione in modalità sviluppo
+
+### Errore: "ValueError: Number of channels exceeds maximum supported channels"
+- Verificare che il numero di canali specificato non superi il massimo supportato (10)
+- Assicurarsi che l'immagine di input abbia il numero di canali specificato
