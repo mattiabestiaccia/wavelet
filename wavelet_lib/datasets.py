@@ -80,13 +80,14 @@ class BalancedDataset(Dataset):
             class_counts[class_name] += 1
         return class_counts
 
-def get_default_transform(target_size=(32, 32), normalize=True):
+def get_default_transform(target_size=(32, 32), normalize=True, dataset_root=None):
     """
     Create a default transform pipeline for image preprocessing.
     
     Args:
         target_size: Size to resize images to
         normalize: Whether to normalize images
+        dataset_root: Root directory of the dataset for computing statistics
         
     Returns:
         transforms.Compose object with the transform pipeline
@@ -97,11 +98,56 @@ def get_default_transform(target_size=(32, 32), normalize=True):
     ]
     
     if normalize:
+        if dataset_root:
+            # Calcola media e deviazione standard dal dataset
+            means, stds = compute_dataset_statistics(dataset_root)
+        else:
+            # Fallback ai valori di default se non viene fornito il dataset
+            means = [0.5, 0.5, 0.5]
+            stds = [0.5, 0.5, 0.5]
+            
         transform_list.append(
-            transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+            transforms.Normalize(mean=means, std=stds)
         )
     
     return transforms.Compose(transform_list)
+
+def compute_dataset_statistics(dataset_root):
+    """
+    Compute mean and standard deviation of the dataset.
+    
+    Args:
+        dataset_root: Root directory containing the dataset
+        
+    Returns:
+        means, stds: Lists containing channel-wise means and standard deviations
+    """
+    # Transform per convertire solo in tensor, senza normalizzazione
+    basic_transform = transforms.Compose([
+        transforms.Resize((32, 32)),
+        transforms.ToTensor()
+    ])
+    
+    # Crea un dataset temporaneo
+    temp_dataset = BalancedDataset(dataset_root, transform=basic_transform, balance=False)
+    loader = DataLoader(temp_dataset, batch_size=128, num_workers=4, shuffle=False)
+    
+    # Inizializza accumulatori
+    channels_sum = torch.zeros(3)
+    channels_squared_sum = torch.zeros(3)
+    num_batches = 0
+    
+    # Calcola le statistiche
+    for data, _ in loader:
+        channels_sum += torch.mean(data, dim=[0, 2, 3])
+        channels_squared_sum += torch.mean(data ** 2, dim=[0, 2, 3])
+        num_batches += 1
+    
+    # Calcola media e deviazione standard
+    means = channels_sum / num_batches
+    stds = torch.sqrt(channels_squared_sum / num_batches - means ** 2)
+    
+    return means.tolist(), stds.tolist()
 
 def create_data_loaders(dataset, test_size=0.2, batch_size=128, num_workers=4, random_state=42):
     """
@@ -119,12 +165,10 @@ def create_data_loaders(dataset, test_size=0.2, batch_size=128, num_workers=4, r
     """
     if test_size == 1.0:
         # Evaluation mode - use the entire dataset for testing
-        test_loader = DataLoader(
-            dataset,
-            batch_size=batch_size,
-            shuffle=False,
-            num_workers=num_workers
-        )
+        test_loader = DataLoader(dataset,
+                                 batch_size=batch_size,
+                                 shuffle=False,
+                                 num_workers=num_workers)
         # Return empty train_loader and full test_loader
         return None, test_loader
     

@@ -56,3 +56,4 @@ script/processed_images_cache.json
 *.swp
 *.swo
 *~
+.aider*
