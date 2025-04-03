@@ -125,16 +125,21 @@ def create_scattering_transform(J=2, shape=(32, 32), max_order=2, device=None):
     
     return scattering
 
-def create_model(config):
+def create_model(config, classifier_type='cnn'):
     """
     Create a scattering classifier model.
     
     Args:
         config: Configuration object with model parameters
+        classifier_type: Type of classifier ('cnn', 'mlp', or 'linear')
         
     Returns:
         ScatteringClassifier model and Scattering2D transform
     """
+    # Validate number of channels
+    if config.num_channels > config.max_channels:
+        raise ValueError(f"Number of channels ({config.num_channels}) exceeds maximum supported channels ({config.max_channels})")
+    
     # Create scattering transform
     scattering = create_scattering_transform(
         J=config.J,
@@ -146,13 +151,13 @@ def create_model(config):
     # Create classifier model
     model = ScatteringClassifier(
         in_channels=config.scattering_coeffs,
-        classifier_type='cnn',
+        classifier_type=classifier_type,
         num_classes=config.num_classes
     ).to(config.device)
     
     return model, scattering
 
-def print_model_summary(model, scattering, device, input_shape=(1, 3, 32, 32)):
+def print_model_summary(model, scattering, device, input_shape=None):
     """
     Print a summary of the model.
     
@@ -160,8 +165,12 @@ def print_model_summary(model, scattering, device, input_shape=(1, 3, 32, 32)):
         model: ScatteringClassifier model
         scattering: Scattering2D transform
         device: Device to use
-        input_shape: Shape of input images
+        input_shape: Shape of input images. If None, inferred from model's channels.
     """
+    # Set default input shape based on model's input channels
+    if input_shape is None:
+        num_channels = model.in_channels if hasattr(model, 'in_channels') else 3
+        input_shape = (1, num_channels, 32, 32)
     print("\n" + "="*80)
     print(" "*30 + "MODEL SUMMARY" + " "*30)
     print("="*80)

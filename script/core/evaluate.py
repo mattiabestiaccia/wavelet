@@ -65,27 +65,36 @@ def parse_args():
     
     return args
 
-def create_model_for_evaluation(num_classes, device):
+def create_model_for_evaluation(num_classes, device, in_channels=12):
     """
-    Crea un modello con i parametri corretti per la valutazione.
+    Create a model with the correct parameters for evaluation.
+    
+    Args:
+        num_classes: Number of output classes
+        device: Device to use
+        in_channels: Number of input channels to use
+    
+    Returns:
+        model, scattering: The model and scattering transform
     """
     config = Config(
-        num_channels=3,
+        num_channels=in_channels,
         num_classes=num_classes,
         scattering_order=2,
         J=2,
         shape=(32, 32),
-        device=device
+        device=device,
+        max_channels=10  # Support for up to 10 channels
     )
     
-    # Crea il modello con 12 canali di input come nel checkpoint
+    # Create the model with the specified number of input channels
     model = ScatteringClassifier(
-        in_channels=12,  # Usa 12 canali come nel modello originale
+        in_channels=config.scattering_coeffs,  # Use computed scattering coefficients
         classifier_type='cnn',
         num_classes=num_classes
     ).to(device)
     
-    # Crea la trasformata scattering
+    # Create the scattering transform
     scattering = create_scattering_transform(
         J=config.J,
         shape=config.shape,
@@ -101,20 +110,30 @@ def load_model_checkpoint(model_path, device):
     """
     checkpoint = torch.load(model_path, map_location=device)
     
-    # Ottieni il numero di classi dal checkpoint
+    # Get the number of classes from the checkpoint
     num_classes = len(checkpoint.get('class_to_idx', {}))
     if num_classes == 0:
-        # Se class_to_idx non è presente, prova a determinare dal layer finale
+        # If class_to_idx is not present, try to determine from the final layer
         out_features = [v.shape[0] for k, v in checkpoint['model_state_dict'].items() if 'classifier.bias' in k]
         num_classes = out_features[0] if out_features else 4
     
-    # Crea il modello con i parametri corretti
-    model, scattering = create_model_for_evaluation(num_classes, device)
+    # Try to detect the number of input channels from the model checkpoint
+    in_channels = 3  # Default fallback
+    if 'model_state_dict' in checkpoint:
+        # Look for the batch normalization layer to get the channel count
+        for key, value in checkpoint['model_state_dict'].items():
+            if 'bn.weight' in key:
+                in_channels = value.size(0) // 3  # Estimate from bn layer size
+                print(f"Detected approximate input channels from checkpoint: {in_channels}")
+                break
     
-    # Carica i pesi
+    # Create the model with the correct parameters
+    model, scattering = create_model_for_evaluation(num_classes, device, in_channels)
+    
+    # Load the weights
     model.load_state_dict(checkpoint['model_state_dict'])
     
-    # Ottieni i nomi delle classi
+    # Get the class names
     class_names = list(checkpoint.get('class_to_idx', {}).keys())
     if not class_names:
         class_names = [f'Class {i}' for i in range(num_classes)]
@@ -129,7 +148,7 @@ def load_model_checkpoint(model_path, device):
             except Exception as e:
                 print(f"Warning: Could not compile model: {str(e)}")
     
-    return model, scattering, class_names, 12  # Ritorna 12 come numero di canali
+    return model, scattering, class_names, in_channels  # Return detected number of channels
 
 def evaluate_model(model, scattering, test_loader, device, class_names, output_dir=None, sample_limit=None):
     """
@@ -448,8 +467,11 @@ def main():
     # Load model
     model, scattering, class_names, in_channels = load_model_checkpoint(args.model_path, device)
     
-    # Prepare dataset
-    transform = get_default_transform(target_size=(32, 32))
+    # Prepare dataset with correct number of channels
+    transform = get_default_transform(
+        target_size=(32, 32),
+        num_channels=in_channels  # Use detected number of channels
+    )
     dataset = BalancedDataset(args.dataset, transform=transform, balance=args.balance)
     
     # Limit dataset size if sample_count is specified

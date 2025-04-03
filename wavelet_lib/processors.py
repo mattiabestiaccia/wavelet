@@ -7,6 +7,7 @@ import numpy as np
 import torch
 from torchvision import transforms
 from PIL import Image
+import rasterio
 
 class ImageProcessor:
     """Class for processing and classifying images with scattering transform."""
@@ -29,10 +30,15 @@ class ImageProcessor:
         
         # Set default transform if not provided
         if transform is None:
+            # Create dynamic normalization based on model's number of channels
+            num_channels = model.in_channels if hasattr(model, 'in_channels') else 3
+            mean_values = [0.5] * num_channels
+            std_values = [0.5] * num_channels
+            
             self.transform = transforms.Compose([
                 transforms.Resize((32, 32)),
                 transforms.ToTensor(),
-                transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+                transforms.Normalize(mean=mean_values, std=std_values)
             ])
         else:
             self.transform = transform
@@ -47,8 +53,27 @@ class ImageProcessor:
         Returns:
             Prediction class and confidence
         """
-        # Load and transform image
-        image = Image.open(image_path).convert('RGB')
+        # Load and transform image - support both standard RGB and multiband images
+        try:
+            # Try loading with rasterio first for multiband support
+            with rasterio.open(image_path) as src:
+                # Read all bands
+                img_array = src.read()
+                num_bands = src.count
+                
+                # Convert to PIL Image format (bands, height, width) -> (height, width, bands)
+                img_array = np.transpose(img_array, (1, 2, 0))
+                
+                if num_bands > 3:
+                    # Handle multiband case
+                    image = Image.fromarray(img_array.astype(np.uint8))
+                else:
+                    # For 1-3 bands, we can use PIL directly
+                    image = Image.fromarray(img_array.astype(np.uint8))
+        except:
+            # Fallback to PIL for standard image formats
+            image = Image.open(image_path)
+            
         image_tensor = self.transform(image).unsqueeze(0).to(self.device)
         
         # Apply scattering and model
@@ -89,9 +114,20 @@ class ImageProcessor:
         Returns:
             Dictionary with classification results
         """
-        # Load image
-        image = Image.open(image_path).convert('RGB')
-        image_array = np.array(image)
+        # Load image with support for multiband
+        try:
+            # Try loading with rasterio first for multiband support
+            with rasterio.open(image_path) as src:
+                # Read all bands
+                img_array = src.read()
+                num_bands = src.count
+                
+                # Convert to format (height, width, bands)
+                image_array = np.transpose(img_array, (1, 2, 0))
+        except:
+            # Fallback to PIL for standard image formats
+            image = Image.open(image_path)
+            image_array = np.array(image)
         
         # Handle special case for 30x30 tiles
         if process_30x30_tiles:
@@ -121,9 +157,22 @@ class ImageProcessor:
         transform_steps = []
         if tile_size != target_size:
             transform_steps.append(transforms.Resize((target_size, target_size)))
+        # Determine number of channels from model or image
+        if hasattr(self.model, 'in_channels'):
+            num_channels = self.model.in_channels
+        else:
+            # Try to infer from image array
+            if len(image_array.shape) == 3:
+                num_channels = image_array.shape[2]
+            else:
+                num_channels = 3  # Default fallback
+                
+        mean_values = [0.5] * num_channels
+        std_values = [0.5] * num_channels
+        
         transform_steps += [
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+            transforms.Normalize(mean=mean_values, std=std_values)
         ]
         transform = transforms.Compose(transform_steps)
         

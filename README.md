@@ -1,6 +1,6 @@
 # Wavelet Scattering Transform (WST) Image Classification
 
-A modular framework for image classification using Wavelet Scattering Transform representations. The framework provides tools for training, evaluating, and deploying models on various types of image data.
+A modular framework for image classification using Wavelet Scattering Transform representations. The framework provides tools for training, evaluating, and deploying models on various types of image data, including multiband images with up to 10 channels.
 
 ## Features
 
@@ -10,6 +10,8 @@ A modular framework for image classification using Wavelet Scattering Transform 
 - Training and evaluation tools
 - Tile-based image classification for large images
 - Visualization tools for model analysis
+- Support for multiband imagery (up to 10 channels)
+- Tools for creating and visualizing multiband images
 
 ## Installation
 
@@ -80,7 +82,7 @@ python script/core/train.py \
 Parametri di training aggiuntivi:
 
 - `--balance`: Bilancia la distribuzione delle classi
-- `--num-channels`: Numero di canali in input (default: 3)
+- `--num-channels`: Numero di canali in input (default: 3, max: 10)
 - `--batch-size`: Dimensione del batch (default: 128)
 - `--lr`: Learning rate (default: 0.1)
 - `--device`: Device da utilizzare (cuda o cpu)
@@ -156,15 +158,17 @@ python script/utility/dataset_inspector.py --dataset /path/to/dataset --expected
 ```
 dataset/
 ├── class1/
-│   ├── image1.jpg
-│   ├── image2.jpg
+│   ├── image1.jpg           # Immagini con 3 canali (RGB)
+│   ├── image2.tif           # Immagini multibanda (fino a 10 canali)
 │   └── ...
 ├── class2/
 │   ├── image1.jpg
-│   ├── image2.jpg
+│   ├── image2.tif
 │   └── ...
 └── ...
 ```
+
+È possibile utilizzare immagini RGB standard o immagini multibanda in formato TIFF con fino a 10 canali.
 
 2. Verifica se il dataset è adatto al modello:
 
@@ -222,8 +226,14 @@ python script/core/predict.py \
 - scikit-learn
 - Pillow
 - tqdm
+- rasterio (per immagini multibanda)
+
+## Supporto per Immagini Multibanda
+
+Per l'utilizzo con immagini multibanda, consultare il file [MULTIBAND_USAGE.md](MULTIBAND_USAGE.md) per guide dettagliate e esempi.
 
 ## Credits
 
 - PyTorch Scattering: https://github.com/kymatio/kymatio
 - PyTorch: https://pytorch.org/
+- Rasterio: https://rasterio.readthedocs.io/

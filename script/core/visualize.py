@@ -173,7 +173,7 @@ def visualize_metrics(model_dir, output_dir=None, experiment_name=None, output_b
     
     print(f"Metrics visualization saved to: {os.path.join(output_dir, 'metrics_plot.png')}")
 
-def visualize_samples(model_path, dataset_path, num_samples=5, output_dir=None, experiment_name=None, output_base=None):
+def visualize_samples(model_path, dataset_path, num_samples=5, output_dir=None, experiment_name=None, output_base=None, num_channels=3):
     """
     Visualize samples from each class with their predictions.
     
@@ -276,8 +276,18 @@ def visualize_samples(model_path, dataset_path, num_samples=5, output_dir=None, 
     
     model.eval()
     
-    # Create dataset
-    transform = get_default_transform(target_size=(32, 32))
+    # Create dataset with proper channel detection
+    # Try to detect channels from model
+    in_channels = num_channels
+    if 'model_state_dict' in checkpoint:
+        for key, value in checkpoint['model_state_dict'].items():
+            if 'bn.weight' in key:
+                detected_channels = value.size(0) // 3
+                in_channels = max(3, detected_channels)  # Use at least 3 channels
+                print(f"Detected {in_channels} channels from model")
+                break
+    
+    transform = get_default_transform(target_size=(32, 32), num_channels=in_channels)
     dataset = BalancedDataset(dataset_path, transform=transform, balance=False)
     
     # Visualize samples for each class
@@ -410,7 +420,8 @@ def main():
             args.num_samples, 
             args.output_dir, 
             args.experiment_name, 
-            args.output_base
+            args.output_base,
+            num_channels=3  # Default - will be detected from model
         )
     elif args.command == 'distribution':
         visualize_distribution(

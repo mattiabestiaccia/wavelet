@@ -76,9 +76,21 @@ def classify_image_tiles(image_path, model, scattering, device, class_names,
     Returns:
         dict: Classification results
     """
-    # Load and convert image
-    image = Image.open(image_path).convert('RGB')
-    image = np.array(image)
+    # Load image with multiband support
+    try:
+        # Try to load with rasterio for multiband support
+        import rasterio
+        with rasterio.open(image_path) as src:
+            # Read all bands
+            img_array = src.read()
+            num_bands = src.count
+            
+            # Convert to format (height, width, bands)
+            image = np.transpose(img_array, (1, 2, 0))
+    except:
+        # Fallback to PIL for standard image formats
+        image = Image.open(image_path)
+        image = np.array(image)
 
     # Handle cropping for images with 30x30 tiles
     if process_30x30_tiles:
@@ -108,9 +120,23 @@ def classify_image_tiles(image_path, model, scattering, device, class_names,
     transform_steps = []
     if tile_size != target_size:
         transform_steps.append(transforms.Resize((target_size, target_size)))
+    # Determine number of channels from model or default to model's input channels
+    if hasattr(model, 'in_channels'):
+        num_channels = model.in_channels
+    else:
+        # Default to match image array if available
+        if len(cropped_image.shape) == 3:
+            num_channels = cropped_image.shape[2]
+        else:
+            num_channels = 3  # Default fallback
+    
+    # Create dynamic normalization arrays
+    mean_values = [0.5] * num_channels
+    std_values = [0.5] * num_channels
+    
     transform_steps += [
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+        transforms.Normalize(mean=mean_values, std=std_values)
     ]
     transform = transforms.Compose(transform_steps)
 

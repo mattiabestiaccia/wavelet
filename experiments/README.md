@@ -8,7 +8,7 @@ This directory contains all experiments with the Wavelet Scattering Transform li
 
 - `dataset0/`: Experiments on the original 4-class vegetation dataset
 - `dataset1/`: Reserved for experiments on future datasets
-- `dataset2/`: Reserved for experiments on future datasets
+- `dataset2/`: Reserved for experiments on future datasets (multiband)
 - `dataset3/`: Reserved for experiments on future datasets
 
 Each dataset directory contains multiple experiments with different models or configurations, organized by experiment name.
@@ -39,12 +39,11 @@ python script/core/visualize.py metrics \
   --output-base experiments/comparisons
 ```
 
-## Experimental Matrix
 
-| Dataset | WST+CNN | WST+MLP | Linear | Notes |
-|---------|---------|---------|--------|-------|
-| dataset0 |  | - | - | Baseline |
-| dataset1 | - | - | - | Future |
-| dataset2 | - | - | - | Future |
+## Multiband Support
 
- = Completed, Ë = In Progress, - = Not Started
+Gli esperimenti possono ora utilizzare immagini multibanda con fino a 10 canali. Per utilizzare questo supporto:
+
+1. Specificare il parametro `--num-channels` durante il training
+2. Utilizzare immagini in formato TIFF con il numero appropriato di canali
+3. Consultare il file [MULTIBAND_USAGE.md](/MULTIBAND_USAGE.md) per guide dettagliate e esempi
