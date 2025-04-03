@@ -5,7 +5,9 @@ Dataset handling module for the Wavelet Scattering Transform Library.
 import os
 import random
 import torch
+import numpy as np
 from PIL import Image
+import rasterio
 from collections import defaultdict
 from torch.utils.data import Dataset, DataLoader, Subset
 from torchvision import transforms
@@ -63,7 +65,27 @@ class BalancedDataset(Dataset):
     def __getitem__(self, index):
         """Get a sample from the dataset."""
         filepath, label = self.samples[index]
-        image = Image.open(filepath).convert('RGB')
+        
+        # Try to load with rasterio first for multiband support
+        try:
+            with rasterio.open(filepath) as src:
+                # Read all bands
+                img_array = src.read()
+                num_bands = src.count
+                
+                # Convert to PIL Image format (bands, height, width) -> (height, width, bands)
+                img_array = np.transpose(img_array, (1, 2, 0))
+                
+                if num_bands == 1:
+                    # Handle single band case
+                    image = Image.fromarray(img_array[:,:,0], mode='L')
+                else:
+                    # Handle multiband case
+                    image = Image.fromarray(img_array.astype(np.uint8))
+        except:
+            # Fallback to PIL for standard image formats
+            image = Image.open(filepath)
+        
         if self.transform:
             image = self.transform(image)
         return image, label
@@ -80,7 +102,7 @@ class BalancedDataset(Dataset):
             class_counts[class_name] += 1
         return class_counts
 
-def get_default_transform(target_size=(32, 32), normalize=True, dataset_root=None):
+def get_default_transform(target_size=(32, 32), normalize=True, dataset_root=None, num_channels=3):
     """
     Create a default transform pipeline for image preprocessing.
     
@@ -88,6 +110,7 @@ def get_default_transform(target_size=(32, 32), normalize=True, dataset_root=Non
         target_size: Size to resize images to
         normalize: Whether to normalize images
         dataset_root: Root directory of the dataset for computing statistics
+        num_channels: Number of channels in the images (default: 3)
         
     Returns:
         transforms.Compose object with the transform pipeline
@@ -99,12 +122,12 @@ def get_default_transform(target_size=(32, 32), normalize=True, dataset_root=Non
     
     if normalize:
         if dataset_root:
-            # Calcola media e deviazione standard dal dataset
-            means, stds = compute_dataset_statistics(dataset_root)
+            # Compute mean and standard deviation from the dataset
+            means, stds = compute_dataset_statistics(dataset_root, num_channels)
         else:
-            # Fallback ai valori di default se non viene fornito il dataset
-            means = [0.5, 0.5, 0.5]
-            stds = [0.5, 0.5, 0.5]
+            # Default values if dataset not provided
+            means = [0.5] * num_channels
+            stds = [0.5] * num_channels
             
         transform_list.append(
             transforms.Normalize(mean=means, std=stds)
@@ -112,38 +135,46 @@ def get_default_transform(target_size=(32, 32), normalize=True, dataset_root=Non
     
     return transforms.Compose(transform_list)
 
-def compute_dataset_statistics(dataset_root):
+def compute_dataset_statistics(dataset_root, num_channels=3):
     """
     Compute mean and standard deviation of the dataset.
     
     Args:
         dataset_root: Root directory containing the dataset
+        num_channels: Number of channels expected in the images (default: 3)
         
     Returns:
         means, stds: Lists containing channel-wise means and standard deviations
     """
-    # Transform per convertire solo in tensor, senza normalizzazione
+    # Basic transform to convert to tensor without normalization
     basic_transform = transforms.Compose([
         transforms.Resize((32, 32)),
         transforms.ToTensor()
     ])
     
-    # Crea un dataset temporaneo
+    # Create a temporary dataset
     temp_dataset = BalancedDataset(dataset_root, transform=basic_transform, balance=False)
     loader = DataLoader(temp_dataset, batch_size=128, num_workers=4, shuffle=False)
     
-    # Inizializza accumulatori
-    channels_sum = torch.zeros(3)
-    channels_squared_sum = torch.zeros(3)
+    # Initialize accumulators for dynamic number of channels
+    channels_sum = torch.zeros(num_channels)
+    channels_squared_sum = torch.zeros(num_channels)
     num_batches = 0
     
-    # Calcola le statistiche
+    # Calculate statistics
     for data, _ in loader:
-        channels_sum += torch.mean(data, dim=[0, 2, 3])
-        channels_squared_sum += torch.mean(data ** 2, dim=[0, 2, 3])
+        # Handle the case where the actual number of channels might be different
+        actual_channels = data.shape[1]
+        if actual_channels != num_channels:
+            print(f"Warning: Expected {num_channels} channels but got {actual_channels}. Using the first {min(actual_channels, num_channels)} channels.")
+            
+        # Sum only over the available channels (up to num_channels)
+        channels_to_process = min(actual_channels, num_channels)
+        channels_sum[:channels_to_process] += torch.mean(data[:, :channels_to_process], dim=[0, 2, 3])
+        channels_squared_sum[:channels_to_process] += torch.mean(data[:, :channels_to_process] ** 2, dim=[0, 2, 3])
         num_batches += 1
     
-    # Calcola media e deviazione standard
+    # Calculate mean and standard deviation
     means = channels_sum / num_batches
     stds = torch.sqrt(channels_squared_sum / num_batches - means ** 2)
     

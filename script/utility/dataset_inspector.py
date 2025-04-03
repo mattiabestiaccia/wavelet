@@ -39,6 +39,8 @@ def parse_args():
                       help='Minimum number of samples per class (default: 10)')
     parser.add_argument('--expected-dims', type=str, default=None,
                       help='Expected dimensions (WxH) for the model, e.g., "32x32"')
+    parser.add_argument('--max-channels', type=int, default=10,
+                      help='Maximum number of channels supported (default: 10)')
     parser.add_argument('--output', type=str, default=None,
                       help='Path to save the inspection report (default: dataset_report.txt)')
     
@@ -138,7 +140,7 @@ def check_image_properties(dataset_path, min_samples=10):
                         # Record image format
                         results['formats'][img.format] += 1
                         
-                        # Record number of channels
+                        # Record number of channels with better multiband support
                         if img.mode == 'RGB':
                             channels = 3
                         elif img.mode == 'RGBA':
@@ -146,7 +148,15 @@ def check_image_properties(dataset_path, min_samples=10):
                         elif img.mode == 'L':
                             channels = 1
                         else:
-                            channels = img.mode
+                            # Try to handle multiband images
+                            try:
+                                # For special cases like multiband TIFFs
+                                if hasattr(img, 'n_frames'):
+                                    channels = img.n_frames
+                                else:
+                                    channels = img.mode
+                            except:
+                                channels = img.mode
                         results['channels'][channels] += 1
                 except (UnidentifiedImageError, OSError, IOError) as e:
                     results['problematic_files'].append((file_path, str(e)))
@@ -159,7 +169,7 @@ def check_image_properties(dataset_path, min_samples=10):
     
     return results
 
-def validate_for_model(dataset_path, expected_dims=None):
+def validate_for_model(dataset_path, expected_dims=None, max_channels=10):
     """Validate if the dataset is suitable for the wavelet model."""
     results = {
         'is_suitable': True,
@@ -205,10 +215,18 @@ def validate_for_model(dataset_path, expected_dims=None):
         results['warnings'].append(f"Inconsistent channel counts: {dict(image_props['channels'])}")
         results['transformations_needed'].append("Convert all images to the same color mode (preferably RGB)")
     
-    # Typical expectation for wavelet model is RGB images
-    if 3 not in image_props['channels']:
-        results['warnings'].append("No RGB images found, wavelet model typically expects RGB (3-channel) images")
-        results['transformations_needed'].append("Convert images to RGB format")
+    # Check if images have reasonable number of channels
+    max_supported_channels = max_channels
+    detected_max_channels = max([ch if isinstance(ch, int) else 3 for ch in image_props['channels']])
+    
+    if detected_max_channels > max_supported_channels:
+        results['warnings'].append(f"Found images with {detected_max_channels} channels, but wavelet model only supports up to {max_supported_channels} channels")
+        results['transformations_needed'].append(f"Convert images to have at most {max_supported_channels} channels")
+    
+    # If no multiband or RGB images found, give a warning
+    if not any(isinstance(ch, int) and ch >= 3 for ch in image_props['channels']):
+        results['warnings'].append("No RGB or multiband images found, wavelet model typically expects at least 3 channels")
+        results['transformations_needed'].append("Convert images to RGB or multiband format")
     
     # Check class balance
     class_counts = structure['class_counts']
@@ -415,6 +433,7 @@ def main():
     print(f"Dataset: {args.dataset}")
     print(f"Expected dimensions: {args.expected_dims or 'Not specified'}")
     print(f"Minimum samples per class: {args.min_samples}")
+    print(f"Maximum supported channels: {args.max_channels}")
     print(f"{'='*80}\n")
     
     # Set output filename if not provided
@@ -439,7 +458,7 @@ def main():
     
     # Validate for model
     print("\nStep 3: Validating for wavelet model...")
-    model_validation = validate_for_model(args.dataset, args.expected_dims)
+    model_validation = validate_for_model(args.dataset, args.expected_dims, args.max_channels)
     
     # Try loading with BalancedDataset
     print("\nStep 4: Testing dataset loader...")

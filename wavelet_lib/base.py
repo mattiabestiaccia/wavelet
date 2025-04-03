@@ -21,7 +21,8 @@ class Config:
                  epochs=90,
                  learning_rate=0.1,
                  momentum=0.9,
-                 weight_decay=5e-4):
+                 weight_decay=5e-4,
+                 max_channels=10):
         """
         Initialize configuration parameters.
         
@@ -37,6 +38,7 @@ class Config:
             learning_rate: Learning rate for optimization
             momentum: Momentum for optimization
             weight_decay: Weight decay for optimization
+            max_channels: Maximum number of channels supported (default: 10)
         """
         self.num_channels = num_channels
         self.num_classes = num_classes
@@ -49,6 +51,11 @@ class Config:
         self.learning_rate = learning_rate
         self.momentum = momentum
         self.weight_decay = weight_decay
+        self.max_channels = max_channels
+        
+        # Validate num_channels
+        if num_channels > max_channels:
+            raise ValueError(f"Number of channels ({num_channels}) exceeds maximum supported channels ({max_channels})")
         
         # Computed fields
         self.scattering_coeffs = (1 + self.J + self.J * (self.J - 1) // 2) * self.num_channels
@@ -62,6 +69,7 @@ class Config:
         print("\nGENERAL SETTINGS:")
         print(f"  • Device: {self.device}")
         print(f"  • Number of channels: {self.num_channels}")
+        print(f"  • Maximum channels supported: {self.max_channels}")
         print(f"  • Number of classes: {self.num_classes}")
         
         print("\nSCATTERING SETTINGS:")

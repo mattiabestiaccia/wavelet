@@ -125,7 +125,8 @@ def main():
         learning_rate=args.lr,
         momentum=args.momentum,
         weight_decay=args.weight_decay,
-        device=args.device
+        device=args.device,
+        max_channels=10  # Support for up to 10 channels
     )
     
     # Print configuration summary
@@ -133,7 +134,11 @@ def main():
     
     # Prepare dataset
     print("\nPreparing dataset...")
-    transform = get_default_transform(target_size=(32, 32), dataset_root=args.dataset)
+    transform = get_default_transform(
+        target_size=(32, 32), 
+        dataset_root=args.dataset,
+        num_channels=args.num_channels  # Use specified number of channels
+    )
     dataset = BalancedDataset(args.dataset, 
                               transform=transform, 
                               balance=args.balance)

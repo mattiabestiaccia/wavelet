@@ -321,9 +321,19 @@ def predict_batch(model_path, image_paths, device=None):
         device=device
     )
     
-    # Create model
+    # Detect input channels from model
+    in_channels = 243  # Default value
+    if 'model_state_dict' in checkpoint:
+        for key, value in checkpoint['model_state_dict'].items():
+            if 'bn.weight' in key:
+                # The bn layer weight size is related to the scattering coefficients
+                in_channels = value.size(0)
+                print(f"Detected input channels from model: {in_channels}")
+                break
+    
+    # Create model with detected channels
     model = ScatteringClassifier(
-        in_channels=243,  # Default
+        in_channels=in_channels,
         num_classes=num_classes
     ).to(device)
     
@@ -338,11 +348,24 @@ def predict_batch(model_path, image_paths, device=None):
     
     model.eval()
     
-    # Create transform
+    # Create transform with dynamic channel normalization
+    # Try to detect number of channels from model
+    in_channels = 3
+    if 'model_state_dict' in checkpoint:
+        for key, value in checkpoint['model_state_dict'].items():
+            if 'bn.weight' in key:
+                detected_channels = value.size(0) // 3
+                in_channels = max(3, detected_channels)
+                print(f"Detected {in_channels} channels from model")
+                break
+    
+    mean_values = [0.5] * in_channels
+    std_values = [0.5] * in_channels
+        
     transform = transforms.Compose([
         transforms.Resize((32, 32)),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+        transforms.Normalize(mean=mean_values, std=std_values)
     ])
     
     # Make predictions
@@ -359,8 +382,28 @@ def predict_batch(model_path, image_paths, device=None):
                 continue
             
             try:
-                # Load and process image
-                img = Image.open(path).convert('RGB')
+                # Load and process image with multiband support
+                try:
+                    # Try to load with rasterio for multiband support
+                    import rasterio
+                    with rasterio.open(path) as src:
+                        # Read all bands
+                        img_array = src.read()
+                        num_bands = src.count
+                        
+                        # Convert to PIL Image format (bands, height, width) -> (height, width, bands)
+                        img_array = np.transpose(img_array, (1, 2, 0))
+                        
+                        if num_bands == 1:
+                            # Handle single band case
+                            img = Image.fromarray(img_array[:,:,0], mode='L')
+                        else:
+                            # Handle multiband case
+                            img = Image.fromarray(img_array.astype(np.uint8))
+                except:
+                    # Fallback to PIL for standard image formats
+                    img = Image.open(path)
+                
                 tensor = transform(img).unsqueeze(0).to(device)
                 
                 # Apply scattering transform

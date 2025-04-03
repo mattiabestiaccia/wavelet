@@ -11,7 +11,7 @@ import rasterio
 from rasterio.windows import Window
 
 
-def create_multiband_tiffs(input_dir, output_dir, pattern="IMG_*_*.tif", max_files=None, compression="lzw"):
+def create_multiband_tiffs(input_dir, output_dir, pattern="IMG_*_*.tif", max_files=None, compression="lzw", max_bands=10):
     """
     Create multiband TIFF files from individual band TIFFs.
     
@@ -27,6 +27,8 @@ def create_multiband_tiffs(input_dir, output_dir, pattern="IMG_*_*.tif", max_fil
         Maximum number of files to process (for testing)
     compression : str, optional
         Compression to use for output files (lzw, deflate, etc.)
+    max_bands : int, optional
+        Maximum number of bands to include in the output TIFF (default: 10)
     """
     # Converti i percorsi in oggetti Path e gestisci gli spazi
     input_dir = Path(os.path.expanduser(str(input_dir).strip()))
@@ -81,17 +83,24 @@ def create_multiband_tiffs(input_dir, output_dir, pattern="IMG_*_*.tif", max_fil
     band_counts = {base: len(files) for base, files in file_groups.items()}
     
     # Trova il numero massimo di bande tra tutti i gruppi
-    max_bands = max(band_counts.values()) if band_counts else 0
-    print(f"Numero massimo di bande trovate: {max_bands}")
+    found_bands = max(band_counts.values()) if band_counts else 0
+    print(f"Numero massimo di bande trovate: {found_bands}")
     
-    # Filtra i gruppi che hanno tutte le bande
+    # Limita il numero di bande al massimo specificato
+    if found_bands > max_bands:
+        print(f"Attenzione: Limitando il numero di bande a {max_bands} (trovate {found_bands})")
+        bands_to_use = max_bands
+    else:
+        bands_to_use = found_bands
+    
+    # Filtra i gruppi che hanno almeno il numero di bande richiesto
     complete_groups = {
-        base: sorted(files, key=lambda x: x[0])
+        base: sorted(files, key=lambda x: x[0])[:bands_to_use]
         for base, files in file_groups.items()
-        if len(files) == max_bands
+        if len(files) >= bands_to_use
     }
     
-    print(f"Found {len(complete_groups)} complete image sets with {max_bands} bands each")
+    print(f"Found {len(complete_groups)} complete image sets with {bands_to_use} bands each")
     if not complete_groups:
         print("No complete image sets found. Check file pattern and directory.")
         print("\nGruppi incompleti trovati:")
@@ -113,7 +122,7 @@ def create_multiband_tiffs(input_dir, output_dir, pattern="IMG_*_*.tif", max_fil
         with rasterio.open(file_paths[0]) as src:
             meta = src.meta.copy()
             meta.update({
-                'count': max_bands,
+                'count': bands_to_use,
                 'compress': compression
             })
         
@@ -132,7 +141,7 @@ def create_multiband_tiffs(input_dir, output_dir, pattern="IMG_*_*.tif", max_fil
         print(f"Created {output_path}")
     
     print(f"Successfully created {len(complete_groups)} multiband TIFF files in {output_dir}")
-    print(f"Each file contains {max_bands} bands")
+    print(f"Each file contains {bands_to_use} bands")
 
 
 if __name__ == "__main__":
@@ -150,6 +159,10 @@ if __name__ == "__main__":
     parser.add_argument("--compression", 
                        default="lzw", 
                        help="Compression for output files (default: lzw)")
+    parser.add_argument("--max-bands", 
+                       type=int,
+                       default=10,
+                       help="Maximum number of bands to include in output files (default: 10)")
     
     args = parser.parse_args()
     
@@ -158,5 +171,6 @@ if __name__ == "__main__":
         args.output_dir,
         args.pattern,
         args.max_files,
-        args.compression
+        args.compression,
+        args.max_bands
     )
