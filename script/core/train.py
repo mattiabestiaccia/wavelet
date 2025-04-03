@@ -36,32 +36,85 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Addestra un modello Wavelet Scattering Transform')
     
     # Parametri del dataset
-    parser.add_argument('--dataset', type=str, required=True, help='Percorso al dataset (obbligatorio)')
-    parser.add_argument('--balance', action='store_true', help='Bilancia le classi nel dataset')
+    parser.add_argument('--dataset', 
+                        type=str, 
+                        required=True, 
+                        help='Percorso al dataset [NECESSARY]')
+    parser.add_argument('--balance', 
+                        action='store_true', 
+                        help='Bilancia le classi nel dataset')
     
     # Parametri del modello
-    parser.add_argument('--num-classes', type=int, default=4, help='Numero di classi (obbligatorio)')
-    parser.add_argument('--num-channels', type=int, default=3, help='Numero di canali di input')
-    parser.add_argument('--scattering-order', type=int, default=2, help='Ordine massimo della trasformata scattering')
-    parser.add_argument('--j', type=int, default=2, help='Parametro J per la trasformata scattering')
+    parser.add_argument('--num-classes', 
+                        type=int, 
+                        default=4, 
+                        help='Numero di classi [NECESSARY]')
+    parser.add_argument('--num-channels', 
+                        type=int, 
+                        default=3, 
+                        help='Numero di canali di input')
+    parser.add_argument('--scattering-order', 
+                        type=int, 
+                        default=2, 
+                        help='Ordine massimo della trasformata scattering')
+    parser.add_argument('--j', 
+                        type=int,
+                        default=2,
+                        help='Parametro J per la trasformata scattering')
     
     # Parametri di addestramento
-    parser.add_argument('--batch-size', type=int, default=128, help='Dimensione del batch')
-    parser.add_argument('--epochs', type=int, default=90, help='Numero di epoche di addestramento (obbligatorio)')
-    parser.add_argument('--lr', type=float, default=0.1, help='Learning rate iniziale')
-    parser.add_argument('--momentum', type=float, default=0.9, help='Momentum per l\'ottimizzatore')
-    parser.add_argument('--weight-decay', type=float, default=5e-4, help='Weight decay per l\'ottimizzatore')
-    parser.add_argument('--reduce-lr-after', type=int, default=20, help='Riduci il learning rate dopo questo numero di epoche')
+    parser.add_argument('--batch-size', 
+                        type=int, 
+                        default=128, 
+                        help='Dimensione del batch')
+    parser.add_argument('--epochs', 
+                        type=int, 
+                        default=90, 
+                        help='Numero di epoche di addestramento [NECESSARY]')
+    parser.add_argument('--lr', 
+                        type=float, 
+                        default=0.1, 
+                        help='Learning rate iniziale')
+    parser.add_argument('--momentum', 
+                        type=float, 
+                        default=0.9, 
+                        help='Momentum per l\'ottimizzatore')
+    parser.add_argument('--weight-decay', 
+                        type=float, 
+                        default=5e-4, 
+                        help='Weight decay per l\'ottimizzatore')
+    parser.add_argument('--reduce-lr-after', 
+                        type=int, 
+                        default=20, 
+                        help='Riduci il learning rate dopo questo numero di epoche')
     
     # Parametri generali di addestramento
-    parser.add_argument('--seed', type=int, default=42, help='Seed per la riproducibilità')
-    parser.add_argument('--device', type=str, default=None, help='Device per l\'addestramento (cuda o cpu)')
-    parser.add_argument('--num-workers', type=int, default=4, help='Numero di worker per i dataloader')
+    parser.add_argument('--seed', 
+                        type=int, 
+                        default=42, 
+                        help='Seed per la riproducibilità')
+    parser.add_argument('--device',
+                        type=str, 
+                        default=None, 
+                        help='Device per l\'addestramento (cuda o cpu)')
+    parser.add_argument('--num-workers', 
+                        type=int, 
+                        default=4, 
+                        help='Numero di worker per i dataloader')
     
     # Parametri di output
-    parser.add_argument('--output-dir', type=str, default=None, help='Directory per salvare i risultati')
-    parser.add_argument('--experiment-name', type=str, default=None, help='Nome per questo esperimento (usato nel percorso di output)')
-    parser.add_argument('--output-base', type=str, default=None, help='Directory base per salvare i risultati (default: results)')
+    parser.add_argument('--output-dir', 
+                        type=str, 
+                        default=None, 
+                        help='Directory per salvare i risultati')
+    parser.add_argument('--experiment-name', 
+                        type=str, 
+                        default=None, 
+                        help='Nome per questo esperimento (usato nel percorso di output)')
+    parser.add_argument('--output-base', 
+                        type=str, 
+                        default=None, 
+                        help='Directory base per salvare i risultati [default: results]')
     
     return parser.parse_args()
 
@@ -118,7 +171,7 @@ def main():
         num_channels=args.num_channels,
         num_classes=args.num_classes,
         scattering_order=args.scattering_order,
-        J=args.j_param,
+        J=args.j,
         shape=(32, 32),  # Fixed size for compatibility
         batch_size=args.batch_size,
         epochs=args.epochs,

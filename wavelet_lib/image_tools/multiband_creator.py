@@ -10,6 +10,16 @@ from pathlib import Path
 import numpy as np
 from tqdm import tqdm
 import rasterio
+from rasterio.warp import reproject, Resampling
+import cv2  # Importa OpenCV per le operazioni di ridimensionamento
+
+# Import scikit-image for resize operations on non-georeferenced images (optional)
+try:
+    from skimage.transform import resize
+    HAVE_SKIMAGE = True
+except ImportError:
+    HAVE_SKIMAGE = False
+    print("NOTE: scikit-image not found, using OpenCV for image resizing")
 
 
 def create_multiband_tiffs(input_dir, output_dir, pattern="IMG_*_*.tif", max_files=None, compression="lzw", max_bands=10):
@@ -134,14 +144,72 @@ def create_multiband_tiffs(input_dir, output_dir, pattern="IMG_*_*.tif", max_fil
         # Percorso del file di output
         output_path = output_dir / f"{base_name}_multiband.tif"
         
+        # Leggi tutte le bande e prepara l'allineamento
+        all_data = []
+        all_descs = []
+        reference_transform = None
+        reference_shape = None
+        
+        # Prima, leggi tutte le bande e la trasformazione di riferimento
+        for band_idx, file_path in enumerate(file_paths, 1):
+            with rasterio.open(file_path) as src:
+                data = src.read(1)
+                if reference_shape is None:
+                    reference_shape = data.shape
+                    reference_transform = src.transform
+                all_data.append(data)
+                band_desc = src.descriptions[0] if src.descriptions else f"Band {band_idx}"
+                all_descs.append(band_desc)
+        
+        # Verifica se c'è bisogno di allineamento (se ci sono differenze di dimensione)
+        shapes_differ = any(data.shape != reference_shape for data in all_data)
+        
         # Crea il nuovo file multibanda
         with rasterio.open(output_path, 'w', **meta) as dst:
-            for band_idx, file_path in enumerate(file_paths, 1):
-                with rasterio.open(file_path) as src:
-                    data = src.read(1)
+            for band_idx, (data, band_desc) in enumerate(zip(all_data, all_descs), 1):
+                # Se necessario, esegui l'allineamento usando rasterio warp
+                if shapes_differ or band_idx > 1:  # Allinea tutte le bande tranne la prima
+                    # Determina le dimensioni di output
+                    out_shape = reference_shape
+                    # Crea una matrice vuota per i dati allineati
+                    aligned_data = np.zeros(out_shape, dtype=data.dtype)
+                    
+                    # Apri nuovamente il file per ottenere la trasformazione specifica della banda
+                    with rasterio.open(file_paths[band_idx-1]) as src:
+                        # Usa rasterio.warp per allineare la banda alla riferimento
+                        # Se non c'è CRS, usa una trasformazione diretta senza CRS
+                        if src.crs:
+                            reproject(
+                                source=data,
+                                destination=aligned_data,
+                                src_transform=src.transform,
+                                src_crs=src.crs,
+                                dst_transform=reference_transform,
+                                dst_crs=src.crs,
+                                resampling=Resampling.bilinear
+                            )
+                        else:
+                            # Per immagini senza georeferenziazione, usa resize scikit-image o OpenCV
+                            if HAVE_SKIMAGE:
+                                # Resize usando scikit-image se disponibile
+                                aligned_data = resize(
+                                    data, 
+                                    output_shape=reference_shape,
+                                    preserve_range=True,
+                                    order=1
+                                ).astype(data.dtype)
+                            else:
+                                # Ridimensiona l'immagine usando OpenCV
+                                aligned_data = cv2.resize(
+                                    data, 
+                                    (reference_shape[1], reference_shape[0]),
+                                    interpolation=cv2.INTER_LINEAR
+                                ).astype(data.dtype)
+                    dst.write(aligned_data, band_idx)
+                else:
                     dst.write(data, band_idx)
-                    band_desc = src.descriptions[0] if src.descriptions else f"Band {band_idx}"
-                    dst.set_band_description(band_idx, band_desc)
+                
+                dst.set_band_description(band_idx, band_desc)
         
         # Aggiorna la descrizione della barra di progresso con il file appena creato
         progress_bar.set_postfix_str(f"Last: {base_name}_multiband.tif")

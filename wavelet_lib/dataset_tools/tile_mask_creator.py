@@ -26,7 +26,8 @@ class TileMaskCreator:
         self,
         tile_size: int = 32,
         tiles_per_subwin: int = 30,
-        use_rasterio: bool = True
+        use_rasterio: bool = True,
+        rgb_bands: Optional[List[int]] = None
     ):
         """
         Inizializza il creatore di maschere per tiles.
@@ -35,12 +36,15 @@ class TileMaskCreator:
             tile_size: Dimensione di un singolo tile in pixel
             tiles_per_subwin: Numero di tiles per lato in una sottofinestra
             use_rasterio: Se True, usa rasterio per il caricamento delle immagini (supporta multibanda)
+            rgb_bands: Lista opzionale di indici di banda da usare per la visualizzazione RGB (base-0).
+                      Ad esempio, [3, 2, 1] userà la banda 4 per R, banda 3 per G, banda 2 per B.
         """
         self.tile_size = tile_size
         self.tiles_per_subwin = tiles_per_subwin
         self.subwin_width = tiles_per_subwin * tile_size
         self.subwin_height = tiles_per_subwin * tile_size
         self.use_rasterio = use_rasterio
+        self.rgb_bands = rgb_bands
 
         # Variabili di stato per la selezione con il mouse
         self.drawing = False
@@ -406,17 +410,54 @@ class TileMaskCreator:
                     # Se multiband, converti in RGB per la visualizzazione
                     elif image.shape[2] > 3:
                         print("Convertendo immagine multibanda in RGB per visualizzazione...")
-                        # Crea una visualizzazione RGB usando le prime 3 bande o banda composita
+                        # Crea una visualizzazione RGB usando bande specifiche
                         vis_img = np.zeros((image.shape[0], image.shape[1], 3), dtype=np.uint8)
                         
-                        # Seleziona le bande da visualizzare (per immagini satellitari)
-                        # Un approccio comune è usare le bande Near-IR, Red, Green
-                        # Se non siamo sicuri delle bande, usiamo le prime 3
-                        bands_to_use = min(3, image.shape[2])
+                        # Mappatura comune per immagini multibanda:
+                        # Per immagini satellite come Sentinel-2:
+                        # banda 2 = blu (idx 1 in base-0)
+                        # banda 3 = verde (idx 2 in base-0)
+                        # banda 4 = rosso (idx 3 in base-0)
+                        # Per visualizzazione naturale colore, usiamo combinazione R,G,B se disponibili
                         
-                        for i in range(bands_to_use):
+                        # Usa i canali RGB specificati se disponibili
+                        if self.rgb_bands is not None and len(self.rgb_bands) == 3:
+                            # Verifica che gli indici specificati siano validi
+                            valid_indices = [idx for idx in self.rgb_bands if 0 <= idx < image.shape[2]]
+                            if len(valid_indices) == 3:
+                                band_indices = self.rgb_bands
+                                print(f"Usando bande specificate {band_indices[0]+1},{band_indices[1]+1},{band_indices[2]+1} come R,G,B")
+                            else:
+                                print(f"ATTENZIONE: Indici banda specificati non validi: {self.rgb_bands}. Usando valori predefiniti.")
+                                # Usa la configurazione predefinita se gli indici specificati non sono validi
+                                if image.shape[2] >= 10:
+                                    band_indices = [5, 3, 1]  # RedEdge-M - Red, Green, Blue
+                                else:
+                                    band_indices = [min(2, image.shape[2]-1), min(1, image.shape[2]-1), 0]
+                        # Altrimenti usa la configurazione predefinita in base al numero di bande
+                        elif image.shape[2] >= 10:
+                            print("Immagine a 10 bande RedEdge-M rilevata, usando mappatura per Micasense RedEdge-M")
+                            # Per immagini RedEdge-M, utilizziamo:
+                            # banda 6 (indice 5): Red
+                            # banda 4 (indice 3): Green
+                            # banda 2 (indice 1): Blue
+                            red_idx = 5 if image.shape[2] > 5 else 0
+                            green_idx = 3 if image.shape[2] > 3 else 0
+                            blue_idx = 1 if image.shape[2] > 1 else 0
+                            band_indices = [red_idx, green_idx, blue_idx]
+                            
+                            print(f"Usando bande {red_idx+1},{green_idx+1},{blue_idx+1} come R,G,B (Red, Green, Blue per RedEdge-M)")
+                        else:
+                            # Per immagini con meno bande, usiamo le prime 3 o le disponibili
+                            print("Usando le prime 3 bande disponibili")
+                            band_indices = [min(2, image.shape[2]-1), 
+                                          min(1, image.shape[2]-1), 
+                                          0]
+                        
+                        # Associa le bande a R, G, B per la visualizzazione
+                        for i, band_idx in enumerate(band_indices):
                             # Estrai banda e normalizza
-                            band = image[:, :, i].astype(np.float32)
+                            band = image[:, :, band_idx].astype(np.float32)
                             
                             # Applica stretching del contrasto con clipping dei valori estremi
                             p2, p98 = np.percentile(band, (2, 98))
@@ -608,13 +649,22 @@ def main():
     parser.add_argument('--no-rasterio',
                         action='store_true',
                         help='Disabilita l\'uso di rasterio per il caricamento delle immagini [default=False]')
+    parser.add_argument('--rgb-bands',
+                        type=int,
+                        nargs=3,
+                        help='Indici delle bande da usare per la visualizzazione RGB (base-0). '
+                              'Ad esempio: 2 1 0 userà banda 3 per R, banda 2 per G, banda 1 per B')
 
     args = parser.parse_args()
 
+    # Converti gli indici RGB se specificati (ricorda che sono 0-based)
+    rgb_bands = args.rgb_bands if args.rgb_bands else None
+    
     mask_creator = TileMaskCreator(
         tile_size=args.tile_size,
         tiles_per_subwin=args.tiles_per_subwin,
-        use_rasterio=not args.no_rasterio
+        use_rasterio=not args.no_rasterio,
+        rgb_bands=rgb_bands
     )
 
     try:
