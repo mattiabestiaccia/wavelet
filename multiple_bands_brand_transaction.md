@@ -97,4 +97,4 @@
     - Supportare la visualizzazione selettiva di canali o
   combinazioni
     - Implementare mappature colore appropriate per dati
-  multispettrali
+  multispettrali+
