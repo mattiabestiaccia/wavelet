@@ -38,6 +38,9 @@ build/
 results/classification_result/
 results/elaborations/
 results/evaluation/
+
+# Experiments
+experiments/dataset*/
 experiments/*/classification_result/
 experiments/*/evaluation/
 experiments/*/model_output/
