@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+"""
+Channel Visualizer for Multiband Images.
+
+This module provides functionality to visualize channels in multiband
+images (such as satellite imagery) sequentially, allowing visual
+inspection of each channel individually.
+"""
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -7,49 +14,53 @@ import rasterio
 import argparse
 import time
 
-def visualize_channels_sequence(input_file, delay=1.0):
+def visualize_channels_sequence(input_file, delay=1.0, cmap='viridis'):
     """
-    Visualizza in sequenza ogni canale di un'immagine multibanda.
+    Visualize each channel of a multiband image in sequence.
     
     Args:
-        input_file (str): Percorso del file TIFF multibanda
-        delay (float): Tempo di attesa tra un canale e l'altro in secondi
+        input_file (str): Path to multiband TIFF file
+        delay (float): Time to wait between channels in seconds
+        cmap (str): Matplotlib colormap to use for visualization
+        
+    Returns:
+        int: Number of channels in the image
     """
     input_path = Path(input_file)
     
-    # Apertura dell'immagine con rasterio
+    # Open image with rasterio
     with rasterio.open(input_file) as src:
         num_bands = src.count
-        print(f"Immagine: {input_path.name}")
-        print(f"Numero di canali: {num_bands}")
+        print(f"Image: {input_path.name}")
+        print(f"Number of channels: {num_bands}")
         
-        # Crea la figura e gli assi una sola volta
+        # Create figure and axes once
         fig, ax = plt.subplots(figsize=(10, 10))
-        plt.ion()  # Abilita la modalità interattiva
+        plt.ion()  # Enable interactive mode
         
         while True:
             for idx in range(num_bands):
-                # Lettura del canale
+                # Read channel
                 band = src.read(idx + 1)
                 
-                # Normalizzazione per la visualizzazione
+                # Normalize for visualization
                 band_norm = (band - band.min()) / (band.max() - band.min())
                 
-                # Pulisci gli assi
+                # Clear axes
                 ax.clear()
                 
                 # Plot
-                im = ax.imshow(band_norm, cmap='viridis')
-                ax.set_title(f'Canale {idx + 1}')
+                im = ax.imshow(band_norm, cmap=cmap)
+                ax.set_title(f'Channel {idx + 1}')
                 ax.axis('off')
                 
-                # Forza l'aggiornamento del display
+                # Force display update
                 plt.draw()
                 plt.pause(delay)
             
-            # Disabilita temporaneamente la modalità interattiva per l'input
+            # Temporarily disable interactive mode for input
             plt.ioff()
-            user_input = input("\nPremi Enter per ripetere la sequenza o 'q' per uscire: ")
+            user_input = input("\nPress Enter to repeat the sequence or 'q' to exit: ")
             plt.ion()
             
             if user_input.lower() == 'q':
@@ -57,18 +68,22 @@ def visualize_channels_sequence(input_file, delay=1.0):
         
         plt.ioff()
         plt.close()
+        
+        return num_bands
 
 def main():
-    parser = argparse.ArgumentParser(description='Visualizza canali di un\'immagine multibanda in sequenza')
-    parser.add_argument('input_file', type=str, help='File TIFF da visualizzare')
-    parser.add_argument('--delay', type=float, default=1.0, help='Tempo di attesa tra i canali in secondi')
+    """Command line entry point for the channel visualizer."""
+    parser = argparse.ArgumentParser(description='Visualize channels of a multiband image in sequence')
+    parser.add_argument('input_file', type=str, help='TIFF file to visualize')
+    parser.add_argument('--delay', type=float, default=1.0, help='Time to wait between channels in seconds')
+    parser.add_argument('--cmap', type=str, default='viridis', help='Matplotlib colormap to use')
     args = parser.parse_args()
     
     try:
-        visualize_channels_sequence(args.input_file, args.delay)
+        visualize_channels_sequence(args.input_file, args.delay, args.cmap)
     except Exception as e:
-        print(f"Errore nel processare {args.input_file}: {e}")
-        raise e  # Mostra l'errore completo per debug
+        print(f"Error processing {args.input_file}: {e}")
+        raise e  # Show full error for debugging
 
 if __name__ == "__main__":
     main()
