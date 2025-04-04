@@ -2,10 +2,12 @@
 
 from wavelet_lib.base import *
 from wavelet_lib.datasets import *
-from wavelet_lib.models import *
-from wavelet_lib.processors import *
 from wavelet_lib.training import *
 from wavelet_lib.visualization import *
+
+# Import both major modules with their respective components
+from wavelet_lib.classification import *
+from wavelet_lib.segmentation import *
 
 # Utility modules
 # Dataset tools

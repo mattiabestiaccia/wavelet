@@ -1,5 +1,5 @@
 """
-Image processing module for the Wavelet Scattering Transform Library.
+Image classification processing module for the Wavelet Scattering Transform Library.
 Contains functions for processing and classifying images using scattering transforms.
 """
 
@@ -8,12 +8,12 @@ import torch
 from torchvision import transforms
 from PIL import Image
 
-class ImageProcessor:
+class ClassificationProcessor:
     """Class for processing and classifying images with scattering transform."""
     
     def __init__(self, model, scattering, device, class_names=None, transform=None):
         """
-        Initialize the image processor.
+        Initialize the classification processor.
         
         Args:
             model: Trained model for classification

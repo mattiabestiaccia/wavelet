@@ -1,229 +1,162 @@
-# Wavelet Scattering Transform (WST) Image Classification
+# Wavelet Scattering Transform Library
 
-A modular framework for image classification using Wavelet Scattering Transform representations. The framework provides tools for training, evaluating, and deploying models on various types of image data.
+A Python library for image analysis, classification, and segmentation using Wavelet Scattering Transforms (WST).
+
+## Overview
+
+This library provides tools for working with Wavelet Scattering Transforms for image processing tasks, including:
+
+- Image classification with wavelet scattering features
+- Image segmentation using WST-UNet architecture 
+- Wavelet analysis tools for image inspection
+- Dataset management and processing utilities
+- Visualization tools for wavelet coefficients
 
 ## Features
 
-- Wavelet Scattering Transform based feature extraction
-- Support for various neural network architectures
-- Balanced dataset handling
-- Training and evaluation tools
-- Tile-based image classification for large images
-- Visualization tools for model analysis
+### Image Classification
+
+- Wavelet Scattering Transform feature extraction
+- Configurable neural network classifiers
+- Support for multi-class classification
+- Tools for model training, evaluation, and prediction
+
+### Image Segmentation
+
+- WST-UNet architecture for semantic segmentation
+- Binary and multi-class segmentation support
+- Training pipeline with data augmentation
+- Evaluation and visualization utilities
+
+### Wavelet Analysis Tools
+
+- Discrete Wavelet Transform (DWT) analysis
+- Wavelet Scattering Transform (WST) visualization
+- Multi-channel and multi-band image support
+- Statistical analysis of wavelet coefficients
+
+### Dataset Utilities
+
+- Dataset inspection and validation
+- Class balancing and augmentation
+- Size and distribution analysis
+- Image preprocessing for wavelet transforms
 
 ## Installation
 
-1. Clone the repository:
-
 ```bash
+# Clone the repository
 git clone https://github.com/mattiabestiaccia/wavelet.git
 cd wavelet
-```
 
-2. Create a virtual environment and install requirements:
-
-```bash
+# Create a virtual environment and install requirements
 python3 -m venv wavelet_venv
 source wavelet_venv/bin/activate
-pip install -r wavelet_venv/requirements.txt
+pip install -r requirements.txt
+
+# Install the library in development mode
+pip install -e .
 ```
 
-3. Install the library in development mode:
+## Quick Start
+
+### Classification
+
+```python
+import torch
+from wavelet_lib.base import Config
+from wavelet_lib.classification import create_classification_model, ClassificationProcessor
+
+# Create model
+config = Config(num_classes=4, J=2)
+model, scattering = create_classification_model(config)
+
+# Load weights
+model.load_state_dict(torch.load('model.pth'))
+model.eval()
+
+# Process an image
+processor = ClassificationProcessor(model, scattering, device=config.device)
+result = processor.process_image('image.jpg')
+
+print(f"Prediction: {result['class_name']} with {result['confidence']:.2f} confidence")
+```
+
+### Segmentation
+
+```python
+from wavelet_lib.segmentation import ScatteringSegmenter
+
+# Initialize segmenter with a trained model
+segmenter = ScatteringSegmenter(
+    model_path='segmentation_model.pth',
+    J=2, 
+    input_shape=(256, 256)
+)
+
+# Segment an image
+mask = segmenter.predict('image.jpg', threshold=0.5)
+```
+
+## Command Line Usage
+
+### Classification
 
 ```bash
-# Addestramento con gestione esperimenti
-python script/core/train.py \
-    --dataset /path/to/dataset \
-    --num-classes 4 \
-    --epochs 90 \
-    --output-base experiments/dataset0 \
-    --experiment-name first_run
+# Train a classification model
+python script/core/train.py --dataset /path/to/dataset --model-save model.pth
 
-# Valutazione nell'ambito dell'esperimento
-python script/core/evaluate.py \
-    --model-path experiments/dataset0/models/first_run/best_model.pth \
-    --dataset /path/to/dataset \
-    --output-base experiments/dataset0 \
-    --experiment-name first_run
+# Evaluate a model
+python script/core/evaluate.py --model model.pth --dataset /path/to/test_dataset
+
+# Make predictions
+python script/core/predict.py --model model.pth --image image.jpg
 ```
 
-## Struttura degli Esperimenti
+### Segmentation
 
-Ogni esperimento è organizzato come segue:
+```bash
+# Train a segmentation model
+python script/core/train_segmentation.py \
+  --train-imgs /path/to/train/images \
+  --train-masks /path/to/train/masks \
+  --model model.pth
+
+# Run segmentation
+python script/core/segment.py --model model.pth --image image.jpg --output results
+```
+
+## Experiment Structure
+
+Each experiment is organized as follows:
 
 ```
 experiments/dataset0/
-├── classification_result/    # Risultati classificazione
-├── dataset_info/            # Statistiche dataset
-├── evaluation/              # Metriche valutazione
-├── models/                  # Checkpoint modelli
-├── model_output/           # Output training
-├── visualization/          # Visualizzazioni
-└── README.md               # Documentazione esperimento
+├── classification_result/    # Classification results
+├── dataset_info/             # Dataset statistics
+├── evaluation/               # Evaluation metrics
+├── models/                   # Model checkpoints
+├── model_output/             # Training output
+├── visualization/            # Visualizations
+└── README.md                 # Experiment documentation
 ```
 
-Per istruzioni dettagliate sull'utilizzo, consultare il file [USAGE.md](USAGE.md).
+## Advanced Usage
 
-## Training a Model
-
-Per addestrare un nuovo modello all'interno di un esperimento, utilizzare lo script `train.py`:
-
-```bash
-python script/core/train.py \
-    --dataset /path/to/dataset \
-    --num-classes 4 \
-    --epochs 90 \
-    --output-base experiments/dataset0 \
-    --experiment-name first_run
-```
-
-Parametri di training aggiuntivi:
-
-- `--balance`: Bilancia la distribuzione delle classi
-- `--num-channels`: Numero di canali in input (default: 3)
-- `--batch-size`: Dimensione del batch (default: 128)
-- `--lr`: Learning rate (default: 0.1)
-- `--device`: Device da utilizzare (cuda o cpu)
-- `--output-base`: Directory base per l'esperimento
-- `--experiment-name`: Nome dell'esperimento
-
-## Making Predictions
-
-Per fare predizioni usando un modello addestrato all'interno di un esperimento:
-
-```bash
-python script/core/predict.py \
-    --model-path experiments/dataset0/models/first_run/best_model.pth \
-    --image-path /path/to/image.jpg \
-    --output-base experiments/dataset0 \
-    --experiment-name first_run
-```
-
-Per la classificazione tile-based di immagini grandi:
-
-```bash
-python script/core/predict.py \
-    --model-path experiments/dataset0/models/first_run/best_model.pth \
-    --image-path /path/to/image.jpg \
-    --tile-mode \
-    --tile-size 32 \
-    --output-base experiments/dataset0 \
-    --experiment-name first_run
-```
-
-Parametri di predizione aggiuntivi:
-
-- `--tile-mode`: Abilita la classificazione tile-based
-- `--tile-size`: Dimensione dei tile (default: 32)
-- `--confidence-threshold`: Soglia di confidenza per la visualizzazione (default: 0.7)
-- `--device`: Device da utilizzare (cuda o cpu)
-- `--output-base`: Directory base per l'esperimento
-- `--experiment-name`: Nome dell'esperimento
-
-## Evaluation
-
-Per valutare un modello su un dataset di test all'interno di un esperimento:
-
-```bash
-python script/core/evaluate.py \
-    --model-path experiments/dataset0/models/first_run/best_model.pth \
-    --dataset /path/to/dataset \
-    --output-base experiments/dataset0 \
-    --experiment-name first_run
-```
-
-## Visualization
-
-Per visualizzare le metriche di training da un esperimento:
-
-```bash
-python script/core/visualize.py metrics \
-    --model-dir experiments/dataset0/model_output/first_run
-```
-
-## Dataset Inspection
-
-Per verificare se un dataset è formattato correttamente per il modello:
-
-```bash
-python script/utility/dataset_inspector.py --dataset /path/to/dataset --expected-dims 32x32
-```
-
-## Example Workflow
-
-1. Prepara il tuo dataset con le sottodirectory delle classi:
-
-```
-dataset/
-├── class1/
-│   ├── image1.jpg
-│   ├── image2.jpg
-│   └── ...
-├── class2/
-│   ├── image1.jpg
-│   ├── image2.jpg
-│   └── ...
-└── ...
-```
-
-2. Verifica se il dataset è adatto al modello:
-
-```bash
-python script/utility/dataset_inspector.py --dataset /path/to/dataset --expected-dims 32x32
-```
-
-3. Addestra un modello in un nuovo esperimento:
-
-```bash
-python script/core/train.py \
-    --dataset /path/to/dataset \
-    --num-classes 4 \
-    --epochs 90 \
-    --balance \
-    --output-base experiments/dataset0 \
-    --experiment-name first_run
-```
-
-4. Visualizza le metriche di training:
-
-```bash
-python script/core/visualize.py metrics \
-    --model-dir experiments/dataset0/model_output/first_run
-```
-
-5. Valuta il modello sui dati di test:
-
-```bash
-python script/core/evaluate.py \
-    --model-path experiments/dataset0/models/first_run/best_model.pth \
-    --dataset /path/to/dataset \
-    --output-base experiments/dataset0 \
-    --experiment-name first_run
-```
-
-6. Fai predizioni su nuove immagini:
-
-```bash
-python script/core/predict.py \
-    --model-path experiments/dataset0/models/first_run/best_model.pth \
-    --image-path /path/to/test_image.jpg \
-    --output-base experiments/dataset0 \
-    --experiment-name first_run
-```
+For more advanced usage and detailed instructions, see the [Usage Guide](USAGE.md).
 
 ## Requirements
 
-- Python 3.6+
-- PyTorch 1.7+
-- Torchvision 0.8+
-- Kymatio 0.2+
+- Python 3.8+
+- PyTorch 1.12+
+- Kymatio 0.3.0+
 - NumPy
+- OpenCV
+- Scikit-learn
 - Matplotlib
-- scikit-learn
-- Pillow
-- tqdm
+- Albumentations (for data augmentation)
 
 ## Credits
 
-- PyTorch Scattering: https://github.com/kymatio/kymatio
-- PyTorch: https://pytorch.org/
+- Wavelet Scattering Transform: [Kymatio](https://github.com/kymatio/kymatio)
+- The segmentation components are inspired by the U-Net architecture

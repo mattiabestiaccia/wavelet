@@ -1,5 +1,5 @@
 """
-Models module for the Wavelet Scattering Transform Library.
+Classification models module for the Wavelet Scattering Transform Library.
 Contains neural network models for classification with scattering transforms.
 """
 
@@ -125,7 +125,7 @@ def create_scattering_transform(J=2, shape=(32, 32), max_order=2, device=None):
     
     return scattering
 
-def create_model(config):
+def create_classification_model(config):
     """
     Create a scattering classifier model.
     
@@ -152,9 +152,9 @@ def create_model(config):
     
     return model, scattering
 
-def print_model_summary(model, scattering, device, input_shape=(1, 3, 32, 32)):
+def print_classifier_summary(model, scattering, device, input_shape=(1, 3, 32, 32)):
     """
-    Print a summary of the model.
+    Print a summary of the classification model.
     
     Args:
         model: ScatteringClassifier model
@@ -163,7 +163,7 @@ def print_model_summary(model, scattering, device, input_shape=(1, 3, 32, 32)):
         input_shape: Shape of input images
     """
     print("\n" + "="*80)
-    print(" "*30 + "MODEL SUMMARY" + " "*30)
+    print(" "*30 + "CLASSIFICATION MODEL SUMMARY" + " "*30)
     print("="*80)
     
     # Create dummy input
