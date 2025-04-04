@@ -389,7 +389,7 @@ def train_segmentation_model(train_images, train_masks,
     if device is None:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
-    # Create augmentations
+    # Create augmentations for training
     train_transform = A.Compose([
         A.Resize(input_shape[0], input_shape[1]),
         A.RandomRotate90(),
@@ -400,12 +400,12 @@ def train_segmentation_model(train_images, train_masks,
         A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
     ])
     
+    # Create augmentations for validation
     val_transform = A.Compose([
         A.Resize(input_shape[0], input_shape[1]),
         A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
     ])
     
-    # Create datasets
     train_dataset = SegmentationDataset(
         train_images, train_masks,
         transform=train_transform,
@@ -417,7 +417,7 @@ def train_segmentation_model(train_images, train_masks,
         shuffle=True, num_workers=num_workers
     )
     
-    # Create validation loader if validation data is provided
+    # Create validation dataset if validation data is provided
     val_loader = None
     if val_images is not None and val_masks is not None:
         val_dataset = SegmentationDataset(
