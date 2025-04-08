@@ -5,9 +5,10 @@ from wavelet_lib.datasets import *
 from wavelet_lib.training import *
 from wavelet_lib.visualization import *
 
-# Import both major modules with their respective components
+# Import major modules with their respective components
 from wavelet_lib.single_tile_classification import *
 from wavelet_lib.single_tile_segmentation import *
+from wavelet_lib.segmented_object_classification import *
 
 # Utility modules
 # Dataset tools

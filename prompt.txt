@@ -1,0 +1,43 @@
+analizza la wavelet_lib e costruisci un workflow (parallelo a single_tile_classification e single_tile_segmentation) per effettuare classificazione di immagini ottenute da segmentazione a partire da altre immagini. in una immagine prima della segmentazione possono essere presenti piu oggetti, e questi verranno segmentati ma non classificati, il risultato saranno tante immagini quanti gli oggetti segmentati ma ognura con sovrapposta la corrispettiva maschera. cio che devi fare e applicare a queste immagini segmentate un analisi wavelet scattering trasform per classificare il risultato della segmentazioni in classi come vegetazione bassa, corsi d'acqua, edifici, strade, sabbia, mudflat, alberi 
+
+[
+  {
+    "segmentation": {
+      "size": [height, width],
+      "counts": "..." // Sequenza di numeri che codifica la maschera RLE
+    },
+    "area": 12345,
+    "bbox": [x, y, width, height],
+    "predicted_iou": 0.98,
+    "point_coords": [[x, y]],
+    "stability_score": 0.95,
+    "crop_box": [x, y, width, height],
+    "class": "fiume"  // Questo campo potrebbe non essere presente nell'output originale di SAM
+  },
+  {
+    "segmentation": {
+      "size": [height, width],
+      "counts": "..." // Sequenza di numeri che codifica la maschera RLE
+    },
+    "area": 5678,
+    "bbox": [x, y, width, height],
+    "predicted_iou": 0.96,
+    "point_coords": [[x, y]],
+    "stability_score": 0.92,
+    "crop_box": [x, y, width, height],
+    "class": "casa"  // Questo campo potrebbe non essere presente nell'output originale di SAM
+  },
+  {
+    "segmentation": {
+      "size": [height, width],
+      "counts": "..." // Sequenza di numeri che codifica la maschera RLE
+    },
+    "area": 34567,
+    "bbox": [x, y, width, height],
+    "predicted_iou": 0.94,
+    "point_coords": [[x, y]],
+    "stability_score": 0.91,
+    "crop_box": [x, y, width, height],
+    "class": "campo_coltivato"  // Questo campo potrebbe non essere presente nell'output originale di SAM
+  }
+]
