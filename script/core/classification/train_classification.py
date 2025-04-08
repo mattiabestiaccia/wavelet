@@ -22,8 +22,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 # Import wavelet_lib modules
 from wavelet_lib.base import Config, set_seed, save_model
 from wavelet_lib.datasets import BalancedDataset, get_default_transform, create_data_loaders
-from wavelet_lib.classification import create_classification_model as create_model
-from wavelet_lib.classification import print_classifier_summary as print_model_summary
+from wavelet_lib.single_tile_classification import create_classification_model as create_model
+from wavelet_lib.single_tile_classification import print_classifier_summary as print_model_summary
 from wavelet_lib.training import Trainer, create_optimizer
 from wavelet_lib.visualization import plot_training_metrics, plot_class_distribution
 

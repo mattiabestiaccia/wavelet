@@ -1,6 +1,6 @@
-# Wavelet Scattering Transform Library Usage Guide
+# Wavelet Scattering Transform Classification Library Usage Guide
 
-This document provides instructions for using the Wavelet Scattering Transform (WST) Library for image analysis and classification tasks.
+This document provides detailed instructions for using the Wavelet Scattering Transform (WST) Library for image classification tasks using wavelet features.
 
 ## Installation
 
@@ -10,253 +10,355 @@ This document provides instructions for using the Wavelet Scattering Transform (
 pip install -r requirements.txt
 ```
 
-## Library Structure
+## Classification Library Structure
 
 The library is organized into the following modules:
 
-- **base.py**: Configuration and utility functions
-- **datasets.py**: Dataset loading and processing
-- **training.py**: Training functions
-- **visualization.py**: Visualization utilities
+- **base.py**: Configuration and utility functions for classification workflows
+- **datasets.py**: Dataset loading and processing with class balancing support
+- **training.py**: Training functions for classification models
+- **visualization.py**: Visualization utilities for classification results and metrics
 - **classification/**: Classification module
-  - **models.py**: Neural network models for classification
-  - **processors.py**: Image classification utilities
-- **segmentation/**: Segmentation module
-  - **models.py**: Image segmentation with WST-UNet
+  - **models.py**: Neural network models optimized for wavelet feature classification
+  - **processors.py**: Image classification utilities and inference pipelines
 
-Utility modules:
+Supporting modules:
 - **dataset_tools/**: Tools for dataset analysis and manipulation
-- **image_tools/**: Image analysis and wavelet transformations
+  - **data_utils.py**: Utilities for data preprocessing and normalization
+  - **dataset_inspector.py**: Tools for analyzing dataset properties
+- **image_tools/**: Wavelet analysis tools for feature extraction
+  - **wavelet_analyzer.py**: Tools for wavelet transform analysis
+  - **wst_dataset_analyzer.py**: Dataset-level wavelet feature analysis
 - **utils/**: General utility functions
+  - **model_utils.py**: Model management and configuration utilities
 
-## Basic Usage
+## Classification Model Usage
 
-### Classification
-
-#### 1. Training a Classification Model
+### 1. Training a Classification Model
 
 ```bash
-python script/core/train.py \
+python script/core/classification/train_classification.py \
   --dataset /path/to/dataset \
-  --model-save /path/to/save/model.pth \
-  --epochs 50 \
-  --batch-size 64
+  --num-classes 4 \
+  --epochs 90 \
+  --batch-size 128 \
+  --balance \
+  --j 2 \
+  --scattering-order 2 \
+  --output-dir /path/to/save/results
 ```
 
-#### 2. Evaluating a Classification Model
+Key parameters:
+- `--dataset`: Path to the image dataset organized in class folders
+- `--num-classes`: Number of classification classes
+- `--balance`: Enable class balancing for imbalanced datasets
+- `--j`: Wavelet scale parameter (controls feature granularity)
+- `--scattering-order`: Maximum order of wavelet scattering coefficients
+
+### 2. Evaluating a Classification Model
 
 ```bash
-python script/core/evaluate.py \
+python script/core/classification/evaluate_classification.py \
   --model /path/to/model.pth \
-  --dataset /path/to/test_dataset
+  --dataset /path/to/test_dataset \
+  --output /path/to/evaluation/results
 ```
 
-#### 3. Making Predictions
+This will generate:
+- Confusion matrix
+- Classification report with precision, recall, and F1-score
+- Performance visualization across classes
+
+### 3. Making Predictions
+
+For single image classification:
 
 ```bash
-python script/core/predict.py \
+python script/core/classification/predict_classification.py \
   --model /path/to/model.pth \
-  --image /path/to/image.jpg
-```
-
-or for batch processing:
-
-```bash
-python script/core/predict.py \
-  --model /path/to/model.pth \
-  --folder /path/to/images \
-  --output /path/to/output
-```
-
-### Segmentation
-
-#### 1. Training a Segmentation Model
-
-```bash
-python script/core/train_segmentation.py \
-  --train-imgs /path/to/train/images \
-  --train-masks /path/to/train/masks \
-  --model /path/to/save/model.pth \
-  --epochs 50
-```
-
-With validation:
-
-```bash
-python script/core/train_segmentation.py \
-  --train-imgs /path/to/train/images \
-  --train-masks /path/to/train/masks \
-  --val-imgs /path/to/val/images \
-  --val-masks /path/to/val/masks \
-  --model /path/to/save/model.pth
-```
-
-#### 2. Running Segmentation
-
-```bash
-python script/core/segment.py \
   --image /path/to/image.jpg \
-  --model /path/to/model.pth \
-  --output /path/to/output
+  --output /path/to/result
 ```
 
-or for batch processing:
+For batch processing multiple images:
 
 ```bash
-python script/core/segment.py \
-  --folder /path/to/images \
+python script/core/classification/predict_classification.py \
   --model /path/to/model.pth \
+  --folder /path/to/images \
   --output /path/to/output \
-  --overlay
+  --save-features  # Optional: save extracted wavelet features
 ```
 
-## Using the Library in Python
 
-### Classification
+## Python API for Classification
+
+### Basic Image Classification
 
 ```python
 import torch
+import numpy as np
+import matplotlib.pyplot as plt
 from wavelet_lib.base import Config
 from wavelet_lib.classification import create_classification_model, ClassificationProcessor
 
-# Initialize configuration
-config = Config(num_classes=4, J=2)
+# Initialize configuration with wavelet parameters
+config = Config(
+    num_classes=4,             # Number of classes
+    num_channels=3,            # RGB images
+    scattering_order=2,        # Maximum scattering order
+    J=2,                       # Wavelet scale parameter
+    shape=(32, 32)             # Input image size
+)
 
-# Create model
+# Create model and scattering transform
 model, scattering = create_classification_model(config)
 
-# Load weights
+# Load pretrained weights
 model.load_state_dict(torch.load('model.pth'))
 model.eval()
 
-# Create processor
-processor = ClassificationProcessor(model, scattering, device=config.device)
-
-# Process an image
-result = processor.process_image('image.jpg')
-print(f"Prediction: {result['class_name']} with {result['confidence']:.2f} confidence")
-```
-
-### Segmentation
-
-```python
-import torch
-import matplotlib.pyplot as plt
-from wavelet_lib.segmentation import ScatteringSegmenter
-
-# Initialize segmenter
-segmenter = ScatteringSegmenter(
-    model_path='segmentation_model.pth',
-    J=2,
-    input_shape=(256, 256)
+# Create processor for inference
+processor = ClassificationProcessor(
+    model=model,
+    scattering=scattering,
+    device=config.device,
+    class_names=['class1', 'class2', 'class3', 'class4']  # Optional class names
 )
 
-# Segment an image
-mask, probabilities = segmenter.predict('image.jpg', threshold=0.5, return_raw=True)
+# Process an image and get classification
+result = processor.process_image('image.jpg')
+print(f"Prediction: {result['class_name']} (Class {result['class_id']})")
+print(f"Confidence: {result['confidence']:.2f}")
 
-# Visualize results
-plt.figure(figsize=(15, 5))
-plt.subplot(131)
-plt.imshow(plt.imread('image.jpg'))
-plt.title('Original Image')
+# Get detailed classification results with feature extraction
+detailed_result = processor.process_image('image.jpg', return_features=True)
 
-plt.subplot(132)
-plt.imshow(mask, cmap='gray')
-plt.title('Segmentation Mask')
+# Access wavelet scattering features
+wst_features = detailed_result['features']
+print(f"Feature shape: {wst_features.shape}")
 
-plt.subplot(133)
-plt.imshow(probabilities, cmap='jet')
-plt.title('Probability Heatmap')
-plt.colorbar()
-
+# Visualize class probabilities
+plt.figure(figsize=(8, 4))
+plt.bar(range(config.num_classes), detailed_result['probabilities'])
+plt.xticks(range(config.num_classes), processor.class_names)
+plt.ylabel('Probability')
+plt.title('Classification Probability Distribution')
 plt.tight_layout()
 plt.show()
 ```
 
-### Wavelet Analysis
+### Working with Wavelet Features
 
 ```python
+import numpy as np
+import matplotlib.pyplot as plt
 from wavelet_lib.image_tools import WaveletAnalyzer
+from wavelet_lib.classification import create_classification_model, ClassificationProcessor
 
-# Initialize analyzer
+# Create wavelet analyzer
 analyzer = WaveletAnalyzer(max_level=3, wavelet='db4', J=2, L=8)
 
 # Load and analyze image
 img = analyzer.load_image('image.jpg')
 
-# Discrete wavelet transform analysis
-dwt_results = analyzer.analyze_dwt(img, plot=True)
+# Get wavelet scattering features
+wst_coeffs = analyzer.analyze_wst(img, plot=False)
 
-# Wavelet scattering transform analysis
-wst_results = analyzer.analyze_wst(img, plot=True)
+# Visualize wavelet coefficient distribution
+plt.figure(figsize=(10, 6))
+plt.hist(wst_coeffs.flatten(), bins=50)
+plt.title('Wavelet Scattering Coefficient Distribution')
+plt.xlabel('Coefficient Value')
+plt.ylabel('Frequency')
+plt.grid(True, alpha=0.3)
+plt.show()
 
-# Visualize WST coefficients in disk format
-analyzer.visualize_wst_disk(img)
+# Visualize coefficients as feature map
+plt.figure(figsize=(12, 10))
+analyzer.visualize_wst_disk(img, 
+                           title='Wavelet Scattering Transform Coefficients',
+                           save_path='wst_visualization.png')
 ```
 
-## Advanced Features
-
-### Dataset Analysis
+### Training and Evaluating Classification Models
 
 ```python
-from wavelet_lib.dataset_tools import analyze_dataset, plot_size_distribution
+import os
+import torch
+import matplotlib.pyplot as plt
+from torch.utils.data import DataLoader
+from wavelet_lib.base import Config, save_model
+from wavelet_lib.datasets import BalancedDataset, get_default_transform, create_data_loaders
+from wavelet_lib.classification import create_classification_model
+from wavelet_lib.training import Trainer, create_optimizer
+from wavelet_lib.visualization import plot_training_metrics, plot_class_distribution
 
-# Analyze a dataset
-stats = analyze_dataset('/path/to/dataset')
+# Create dataset with class balancing
+dataset_path = '/path/to/dataset'
+transform = get_default_transform(target_size=(32, 32))
+dataset = BalancedDataset(dataset_path, transform=transform, balance=True)
 
-# Plot size distribution
-plot_size_distribution('/path/to/dataset', save_path='size_dist.png')
+# Visualize class distribution
+plot_class_distribution(dataset, 
+                        title="Class distribution in dataset",
+                        save_path="class_distribution.png")
+
+# Create dataloaders with train/test split
+train_loader, test_loader = create_data_loaders(dataset,
+                                               test_size=0.2,
+                                               batch_size=128,
+                                               num_workers=4)
+
+# Create model configuration
+config = Config(
+    num_classes=len(dataset.classes),
+    num_channels=3,
+    scattering_order=2,
+    J=2,
+    shape=(32, 32),
+    batch_size=128,
+    epochs=90,
+    learning_rate=0.1,
+    momentum=0.9,
+    weight_decay=5e-4
+)
+
+# Create model and optimizer
+model, scattering = create_classification_model(config)
+optimizer = create_optimizer(model, config)
+
+# Create trainer
+trainer = Trainer(model, scattering, config.device, optimizer)
+
+# Train the model
+results = trainer.train(train_loader, 
+                       test_loader,
+                       config.epochs,
+                       save_path='model.pth',
+                       reduce_lr_after=20,
+                       class_to_idx=dataset.class_to_idx)
+
+# Plot training metrics
+plot_training_metrics(config.epochs,
+                     results['train_accuracies'],
+                     results['test_accuracies'],
+                     results['train_losses'],
+                     results['test_losses'],
+                     'training_metrics.png')
+
+print(f"Best accuracy: {results['best_accuracy']:.2f}%")
 ```
 
-### WST Dataset Analysis
+## Advanced Classification Features
+
+### Dataset Analysis and Preparation
+
+```python
+from wavelet_lib.dataset_tools import dataset_inspector
+from wavelet_lib.dataset_tools.data_utils import analyze_dataset, plot_size_distribution
+
+# Analyze a classification dataset
+stats = analyze_dataset('/path/to/dataset')
+print(f"Total images: {stats['total_images']}")
+print(f"Classes: {stats['classes']}")
+print(f"Class distribution: {stats['class_distribution']}")
+
+# Plot size distribution of images in dataset
+plot_size_distribution('/path/to/dataset', save_path='size_distribution.png')
+
+# Run comprehensive dataset inspection
+inspector = dataset_inspector.DatasetInspector('/path/to/dataset')
+report = inspector.generate_report(save_path='dataset_report.txt')
+inspector.plot_statistics(save_dir='dataset_stats')
+```
+
+### Wavelet Feature Analysis for Classification
 
 ```python
 from wavelet_lib.image_tools import WSTDatasetAnalyzer
 
-# Initialize analyzer
-analyzer = WSTDatasetAnalyzer('processed_dataset.pkl', 'analysis_output')
+# Analyze wavelet features across dataset classes
+analyzer = WSTDatasetAnalyzer(
+    dataset_path='/path/to/dataset',
+    output_dir='wst_analysis',
+    J=2,
+    L=8
+)
 
-# Run analysis
-analyzer.analyze()
+# Compute and analyze features
+analyzer.analyze(sample_size=50)  # Analyze 50 samples per class
 
-# Generate visualizations
-analyzer.plot_analysis()
+# Generate visualizations of feature distributions by class
+analyzer.plot_class_feature_distributions()
+
+# Visualize feature importance for classification
+analyzer.plot_feature_importance() 
+
+# Generate t-SNE visualization of feature space
+analyzer.plot_feature_space_tsne(perplexity=30)
 ```
 
-### Synthetic Test Images
+## Classification Command Line Tools
 
-```python
-from wavelet_lib.image_tools import PhantomGenerator
+The library provides command-line tools for classification-related tasks:
 
-# Create generator
-generator = PhantomGenerator('phantoms_output')
-
-# Generate test images
-phantoms = generator.generate_all_phantoms(base_size=512)
-```
-
-## Command Line Tools
-
-The library provides command-line tools for common tasks:
-
-### Dataset Inspection
+### Dataset Inspection for Classification
 
 ```bash
-python -m wavelet_lib.dataset_tools.dataset_inspector --dataset /path/to/dataset
+# Generate comprehensive dataset report for classification
+python -m wavelet_lib.dataset_tools.dataset_inspector \
+  --dataset /path/to/dataset \
+  --output dataset_report.txt \
+  --visualize
+
+# Analyze class distribution
+python -m wavelet_lib.dataset_tools.dataset_inspector \
+  --dataset /path/to/dataset \
+  --class-distribution \
+  --output class_dist.png
 ```
 
-### Channel Visualization
+### Wavelet Feature Visualization
 
 ```bash
-python -m wavelet_lib.image_tools.visualize_channels /path/to/multiband_image.tif --delay 0.5
+# Visualize wavelet scattering coefficients for an image
+python -m wavelet_lib.image_tools.visualize_wst \
+  --image /path/to/image.jpg \
+  --output wst_viz.png \
+  --j 2 \
+  --order 2
+  
+# Compare wavelet features between classes
+python -m wavelet_lib.image_tools.compare_class_features \
+  --dataset /path/to/dataset \
+  --samples 10 \
+  --output feature_comparison.png
 ```
 
-### Create Multiband TIFF
+### Feature Extraction Utilities
 
 ```bash
-python -m wavelet_lib.utils.merge_bands /path/to/bands /path/to/output
+# Extract wavelet features from dataset for external analysis
+python -m wavelet_lib.classification.extract_features \
+  --dataset /path/to/dataset \
+  --model /path/to/model.pth \
+  --output features.pkl \
+  --batch-size 64
 ```
 
-## Examples
+## Classification Experiments
 
-See the `experiments` directory for example usage in different scenarios.
+The `experiments` directory contains examples of classification tasks with different datasets:
+
+- `experiments/custom_dataset_4_classe/`: Multi-class classification example with 4 classes
+- `experiments/dataset1/`: Binary classification example
+- `experiments/dataset2/`: Another classification example with different parameters
+
+Each experiment includes:
+- Training configuration
+- Evaluation metrics
+- Visualizations of results
+- Analysis of model performance
+
+To replicate an experiment, see the README.md file in each experiment directory.

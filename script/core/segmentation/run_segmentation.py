@@ -28,7 +28,7 @@ from pathlib import Path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 # Import wavelet_lib modules
-from wavelet_lib.segmentation import ScatteringSegmenter
+from wavelet_lib.single_tile_segmentation import ScatteringSegmenter
 from wavelet_lib.base import Config
 
 

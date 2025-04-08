@@ -6,8 +6,8 @@ from wavelet_lib.training import *
 from wavelet_lib.visualization import *
 
 # Import both major modules with their respective components
-from wavelet_lib.classification import *
-from wavelet_lib.segmentation import *
+from wavelet_lib.single_tile_classification import *
+from wavelet_lib.single_tile_segmentation import *
 
 # Utility modules
 # Dataset tools

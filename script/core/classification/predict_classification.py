@@ -25,8 +25,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 
 # Import wavelet_lib modules
 from wavelet_lib.base import load_model
-from wavelet_lib.classification import create_scattering_transform, ScatteringClassifier
-from wavelet_lib.classification import ClassificationProcessor as ImageProcessor
+from wavelet_lib.single_tile_classification import create_scattering_transform, ScatteringClassifier
+from wavelet_lib.single_tile_classification import ClassificationProcessor as ImageProcessor
 from wavelet_lib.visualization import visualize_classification_results
 
 def parse_args():
