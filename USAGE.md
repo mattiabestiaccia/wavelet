@@ -1,364 +1,342 @@
-# Wavelet Scattering Transform Classification Library Usage Guide
+# Guida all'Utilizzo della Wavelet Scattering Transform Library
 
-This document provides detailed instructions for using the Wavelet Scattering Transform (WST) Library for image classification tasks using wavelet features.
+Questa guida fornisce istruzioni dettagliate per l'utilizzo della Wavelet Scattering Transform Library, una libreria completa per l'analisi di immagini utilizzando la trasformata wavelet scattering.
 
-## Installation
+## Indice
+1. [Introduzione](#introduzione)
+2. [Installazione](#installazione)
+3. [Struttura della Libreria](#struttura-della-libreria)
+4. [Moduli Principali](#moduli-principali)
+   - [Classificazione di Immagini](#classificazione-di-immagini)
+   - [Segmentazione di Immagini](#segmentazione-di-immagini)
+   - [Classificazione di Oggetti Segmentati](#classificazione-di-oggetti-segmentati)
+5. [Workflow Completi](#workflow-completi)
+6. [Utilizzo Avanzato](#utilizzo-avanzato)
+7. [Risoluzione dei Problemi](#risoluzione-dei-problemi)
 
-1. Clone the repository
-2. Install dependencies:
+## Introduzione
+
+La Wavelet Scattering Transform Library è una libreria Python progettata per sfruttare la potenza della trasformata wavelet scattering per diverse attività di analisi di immagini. La trasformata wavelet scattering è particolarmente efficace per estrarre caratteristiche robuste da immagini, che possono essere utilizzate per classificazione, segmentazione e altre attività di analisi.
+
+La libreria offre tre moduli principali:
+- **Single Tile Classification**: Per la classificazione di immagini singole
+- **Single Tile Segmentation**: Per la segmentazione di immagini singole
+- **Segmented Object Classification**: Per la classificazione di oggetti estratti da immagini segmentate
+
+## Installazione
+
 ```bash
+# Clona il repository
+git clone https://github.com/mattiabestiaccia/wavelet.git
+cd wavelet
+
+# Crea un ambiente virtuale e installa le dipendenze
+python3 -m venv wavelet_venv
+source wavelet_venv/bin/activate
 pip install -r requirements.txt
+
+# Installa la libreria in modalità sviluppo
+pip install -e .
 ```
 
-## Classification Library Structure
+## Struttura della Libreria
 
-The library is organized into the following modules:
+La libreria è organizzata nella seguente struttura:
 
-- **base.py**: Configuration and utility functions for classification workflows
-- **datasets.py**: Dataset loading and processing with class balancing support
-- **training.py**: Training functions for classification models
-- **visualization.py**: Visualization utilities for classification results and metrics
-- **classification/**: Classification module
-  - **models.py**: Neural network models optimized for wavelet feature classification
-  - **processors.py**: Image classification utilities and inference pipelines
-
-Supporting modules:
-- **dataset_tools/**: Tools for dataset analysis and manipulation
-  - **data_utils.py**: Utilities for data preprocessing and normalization
-  - **dataset_inspector.py**: Tools for analyzing dataset properties
-- **image_tools/**: Wavelet analysis tools for feature extraction
-  - **wavelet_analyzer.py**: Tools for wavelet transform analysis
-  - **wst_dataset_analyzer.py**: Dataset-level wavelet feature analysis
-- **utils/**: General utility functions
-  - **model_utils.py**: Model management and configuration utilities
-
-## Classification Model Usage
-
-### 1. Training a Classification Model
-
-```bash
-python script/core/classification/train_classification.py \
-  --dataset /path/to/dataset \
-  --num-classes 4 \
-  --epochs 90 \
-  --batch-size 128 \
-  --balance \
-  --j 2 \
-  --scattering-order 2 \
-  --output-dir /path/to/save/results
+```
+wavelet/
+├── wavelet_lib/                  # Directory principale della libreria
+│   ├── base.py                   # Classi e funzioni di base
+│   ├── datasets.py               # Gestione dei dataset
+│   ├── training.py               # Funzioni di addestramento generiche
+│   ├── visualization.py          # Strumenti di visualizzazione
+│   ├── single_tile_classification/  # Modulo per la classificazione di immagini
+│   │   ├── models.py             # Modelli di classificazione
+│   │   ├── processors.py         # Processori per l'inferenza
+│   │   └── usage.md              # Guida specifica per la classificazione
+│   ├── single_tile_segmentation/    # Modulo per la segmentazione di immagini
+│   │   ├── models.py             # Modelli di segmentazione
+│   │   ├── processors.py         # Processori per l'inferenza
+│   │   └── usage.md              # Guida specifica per la segmentazione
+│   └── segmented_object_classification/  # Modulo per la classificazione di oggetti segmentati
+│       ├── models.py             # Modelli per oggetti segmentati
+│       ├── processors.py         # Processori per oggetti segmentati
+│       ├── rle_utils.py          # Utilità per annotazioni COCO RLE
+│       ├── training.py           # Funzioni di addestramento specifiche
+│       └── usage.md              # Guida specifica per oggetti segmentati
+├── script/                       # Script eseguibili
+│   └── core/                     # Script principali
+│       ├── classification/       # Script per la classificazione
+│       ├── segmentation/         # Script per la segmentazione
+│       └── segmented_object_classification/  # Script per oggetti segmentati
+└── experiments/                  # Directory per gli esperimenti
 ```
 
-Key parameters:
-- `--dataset`: Path to the image dataset organized in class folders
-- `--num-classes`: Number of classification classes
-- `--balance`: Enable class balancing for imbalanced datasets
-- `--j`: Wavelet scale parameter (controls feature granularity)
-- `--scattering-order`: Maximum order of wavelet scattering coefficients
+## Moduli Principali
 
-### 2. Evaluating a Classification Model
+### Classificazione di Immagini
 
-```bash
-python script/core/classification/evaluate_classification.py \
-  --model /path/to/model.pth \
-  --dataset /path/to/test_dataset \
-  --output /path/to/evaluation/results
-```
+Il modulo `single_tile_classification` fornisce strumenti per la classificazione di immagini utilizzando la trasformata wavelet scattering.
 
-This will generate:
-- Confusion matrix
-- Classification report with precision, recall, and F1-score
-- Performance visualization across classes
-
-### 3. Making Predictions
-
-For single image classification:
-
-```bash
-python script/core/classification/predict_classification.py \
-  --model /path/to/model.pth \
-  --image /path/to/image.jpg \
-  --output /path/to/result
-```
-
-For batch processing multiple images:
-
-```bash
-python script/core/classification/predict_classification.py \
-  --model /path/to/model.pth \
-  --folder /path/to/images \
-  --output /path/to/output \
-  --save-features  # Optional: save extracted wavelet features
-```
-
-
-## Python API for Classification
-
-### Basic Image Classification
+#### Esempio di Utilizzo Base
 
 ```python
 import torch
-import numpy as np
-import matplotlib.pyplot as plt
 from wavelet_lib.base import Config
-from wavelet_lib.classification import create_classification_model, ClassificationProcessor
+from wavelet_lib.single_tile_classification.models import create_classification_model
+from wavelet_lib.single_tile_classification.processors import ClassificationProcessor
 
-# Initialize configuration with wavelet parameters
+# Crea configurazione del modello
 config = Config(
-    num_classes=4,             # Number of classes
-    num_channels=3,            # RGB images
-    scattering_order=2,        # Maximum scattering order
-    J=2,                       # Wavelet scale parameter
-    shape=(32, 32)             # Input image size
+    num_classes=4,             # Numero di classi di classificazione
+    num_channels=3,            # Immagini RGB
+    scattering_order=2,        # Ordine massimo della trasformata scattering
+    J=2,                       # Parametro di scala wavelet
+    shape=(32, 32),            # Dimensione dell'immagine di input
+    batch_size=128,            # Dimensione del batch per l'addestramento
+    learning_rate=0.1,         # Learning rate iniziale
+    weight_decay=5e-4          # Forza della regolarizzazione
 )
 
-# Create model and scattering transform
+# Crea modello e trasformata scattering
 model, scattering = create_classification_model(config)
 
-# Load pretrained weights
-model.load_state_dict(torch.load('model.pth'))
-model.eval()
-
-# Create processor for inference
-processor = ClassificationProcessor(
+# Addestra il modello
+from wavelet_lib.training import train_model
+train_model(
     model=model,
     scattering=scattering,
-    device=config.device,
-    class_names=['class1', 'class2', 'class3', 'class4']  # Optional class names
+    train_dir="/path/to/train_dataset",
+    test_dir="/path/to/test_dataset",
+    config=config,
+    save_path="/path/to/save/model.pth"
 )
 
-# Process an image and get classification
+# Crea processore per l'inferenza
+processor = ClassificationProcessor(model_path='/path/to/save/model.pth')
+
+# Classifica un'immagine
 result = processor.process_image('image.jpg')
-print(f"Prediction: {result['class_name']} (Class {result['class_id']})")
-print(f"Confidence: {result['confidence']:.2f}")
-
-# Get detailed classification results with feature extraction
-detailed_result = processor.process_image('image.jpg', return_features=True)
-
-# Access wavelet scattering features
-wst_features = detailed_result['features']
-print(f"Feature shape: {wst_features.shape}")
-
-# Visualize class probabilities
-plt.figure(figsize=(8, 4))
-plt.bar(range(config.num_classes), detailed_result['probabilities'])
-plt.xticks(range(config.num_classes), processor.class_names)
-plt.ylabel('Probability')
-plt.title('Classification Probability Distribution')
-plt.tight_layout()
-plt.show()
+print(f"Predizione: {result['class']} con confidenza {result['confidence']:.2f}")
 ```
 
-### Working with Wavelet Features
+Per istruzioni più dettagliate, consulta la [Guida alla Classificazione di Immagini](wavelet_lib/single_tile_classification/usage.md).
+
+### Segmentazione di Immagini
+
+Il modulo `single_tile_segmentation` fornisce strumenti per la segmentazione di immagini utilizzando un'architettura U-Net arricchita con la trasformata wavelet scattering.
+
+#### Esempio di Utilizzo Base
 
 ```python
-import numpy as np
-import matplotlib.pyplot as plt
-from wavelet_lib.image_tools import WaveletAnalyzer
-from wavelet_lib.classification import create_classification_model, ClassificationProcessor
+from wavelet_lib.single_tile_segmentation.models import train_segmentation_model, ScatteringSegmenter
+import glob
 
-# Create wavelet analyzer
-analyzer = WaveletAnalyzer(max_level=3, wavelet='db4', J=2, L=8)
+# Trova tutte le immagini e le maschere
+train_images = sorted(glob.glob("/path/to/dataset/images/*.jpg"))
+train_masks = sorted(glob.glob("/path/to/dataset/masks/*.png"))
 
-# Load and analyze image
-img = analyzer.load_image('image.jpg')
+# Addestra il modello
+train_segmentation_model(
+    train_images=train_images,
+    train_masks=train_masks,
+    model_path="/path/to/save/model.pth",
+    J=2,
+    input_shape=(256, 256),
+    batch_size=8,
+    num_epochs=50
+)
 
-# Get wavelet scattering features
-wst_coeffs = analyzer.analyze_wst(img, plot=False)
+# Carica il segmentatore
+segmenter = ScatteringSegmenter(
+    model_path="/path/to/save/model.pth",
+    J=2,
+    input_shape=(256, 256),
+    apply_morphology=True
+)
 
-# Visualize wavelet coefficient distribution
-plt.figure(figsize=(10, 6))
-plt.hist(wst_coeffs.flatten(), bins=50)
-plt.title('Wavelet Scattering Coefficient Distribution')
-plt.xlabel('Coefficient Value')
-plt.ylabel('Frequency')
-plt.grid(True, alpha=0.3)
-plt.show()
-
-# Visualize coefficients as feature map
-plt.figure(figsize=(12, 10))
-analyzer.visualize_wst_disk(img, 
-                           title='Wavelet Scattering Transform Coefficients',
-                           save_path='wst_visualization.png')
+# Segmenta un'immagine
+binary_mask, raw_pred = segmenter.predict(
+    image_path="image.jpg",
+    threshold=0.5,
+    return_raw=True
+)
 ```
 
-### Training and Evaluating Classification Models
+Per istruzioni più dettagliate, consulta la [Guida alla Segmentazione di Immagini](wavelet_lib/single_tile_segmentation/usage.md).
+
+### Classificazione di Oggetti Segmentati
+
+Il modulo `segmented_object_classification` fornisce strumenti per la classificazione di oggetti estratti da immagini segmentate, con supporto per annotazioni in formato COCO RLE.
+
+#### Esempio di Utilizzo Base
 
 ```python
-import os
-import torch
-import matplotlib.pyplot as plt
-from torch.utils.data import DataLoader
-from wavelet_lib.base import Config, save_model
-from wavelet_lib.datasets import BalancedDataset, get_default_transform, create_data_loaders
-from wavelet_lib.classification import create_classification_model
-from wavelet_lib.training import Trainer, create_optimizer
-from wavelet_lib.visualization import plot_training_metrics, plot_class_distribution
+# Crea un dataset da annotazioni COCO RLE
+from wavelet_lib.segmented_object_classification.rle_utils import create_dataset_from_annotations
 
-# Create dataset with class balancing
-dataset_path = '/path/to/dataset'
-transform = get_default_transform(target_size=(32, 32))
-dataset = BalancedDataset(dataset_path, transform=transform, balance=True)
+create_dataset_from_annotations(
+    images_dir="/path/to/images",
+    annotations_dir="/path/to/annotations",
+    output_dir="/path/to/dataset"
+)
 
-# Visualize class distribution
-plot_class_distribution(dataset, 
-                        title="Class distribution in dataset",
-                        save_path="class_distribution.png")
+# Addestra un classificatore
+from wavelet_lib.segmented_object_classification.training import train_segmented_object_classifier
 
-# Create dataloaders with train/test split
-train_loader, test_loader = create_data_loaders(dataset,
-                                               test_size=0.2,
-                                               batch_size=128,
-                                               num_workers=4)
+train_segmented_object_classifier(
+    train_dir="/path/to/dataset",
+    model_path="/path/to/save/model.pth",
+    input_size=(32, 32),
+    batch_size=32,
+    num_epochs=50
+)
 
-# Create model configuration
+# Classifica oggetti da un'immagine con annotazione
+from wavelet_lib.segmented_object_classification.models import load_segmented_object_classifier
+from wavelet_lib.segmented_object_classification.processors import SegmentedObjectProcessor
+from wavelet_lib.segmented_object_classification.rle_utils import load_coco_rle_annotations, extract_objects_from_coco_annotations
+import cv2
+
+# Carica modello
+model, class_to_idx = load_segmented_object_classifier(
+    model_path="/path/to/save/model.pth",
+    num_classes=7
+)
+
+# Carica immagine e annotazioni
+image = cv2.imread("image.jpg")
+annotations = load_coco_rle_annotations("annotation.json")
+
+# Estrai e classifica oggetti
+processor = SegmentedObjectProcessor(model=model, class_mapping=class_to_idx)
+objects = extract_objects_from_coco_annotations(image, annotations)
+for obj_img, bbox, obj_mask, class_name, score in objects:
+    result = processor.process_object(obj_img)
+    print(f"Classe: {result['class']} con confidenza {result['confidence']:.2f}")
+```
+
+Per istruzioni più dettagliate, consulta la [Guida alla Classificazione di Oggetti Segmentati](wavelet_lib/segmented_object_classification/usage.md).
+
+## Workflow Completi
+
+La libreria supporta diversi workflow completi per l'analisi di immagini:
+
+### Workflow 1: Classificazione di Immagini
+
+1. Preparazione del dataset
+2. Addestramento del modello di classificazione
+3. Valutazione del modello
+4. Classificazione di nuove immagini
+
+### Workflow 2: Segmentazione di Immagini
+
+1. Preparazione del dataset con immagini e maschere
+2. Addestramento del modello di segmentazione
+3. Valutazione del modello
+4. Segmentazione di nuove immagini
+
+### Workflow 3: Classificazione di Oggetti Segmentati
+
+1. Segmentazione di immagini (con SAM o altro strumento)
+2. Estrazione di oggetti dalle maschere di segmentazione
+3. Creazione di un dataset di oggetti segmentati
+4. Addestramento di un classificatore per gli oggetti
+5. Classificazione di nuovi oggetti segmentati
+
+### Workflow 4: Pipeline Completa
+
+1. Segmentazione di immagini
+2. Estrazione di oggetti
+3. Classificazione degli oggetti
+4. Analisi statistica dei risultati
+
+## Utilizzo Avanzato
+
+### Supporto per Immagini Multibanda
+
+La libreria supporta immagini multibanda (più di 3 canali):
+
+```python
+# Configura per immagini multibanda
 config = Config(
-    num_classes=len(dataset.classes),
-    num_channels=3,
+    num_channels=5,  # Ad esempio, 5 bande
+    num_classes=4,
     scattering_order=2,
     J=2,
-    shape=(32, 32),
-    batch_size=128,
-    epochs=90,
-    learning_rate=0.1,
-    momentum=0.9,
-    weight_decay=5e-4
+    shape=(32, 32)
 )
 
-# Create model and optimizer
+# Crea modello per immagini multibanda
 model, scattering = create_classification_model(config)
-optimizer = create_optimizer(model, config)
-
-# Create trainer
-trainer = Trainer(model, scattering, config.device, optimizer)
-
-# Train the model
-results = trainer.train(train_loader, 
-                       test_loader,
-                       config.epochs,
-                       save_path='model.pth',
-                       reduce_lr_after=20,
-                       class_to_idx=dataset.class_to_idx)
-
-# Plot training metrics
-plot_training_metrics(config.epochs,
-                     results['train_accuracies'],
-                     results['test_accuracies'],
-                     results['train_losses'],
-                     results['test_losses'],
-                     'training_metrics.png')
-
-print(f"Best accuracy: {results['best_accuracy']:.2f}%")
 ```
 
-## Advanced Classification Features
+### Personalizzazione dei Modelli
 
-### Dataset Analysis and Preparation
-
-```python
-from wavelet_lib.dataset_tools import dataset_inspector
-from wavelet_lib.dataset_tools.data_utils import analyze_dataset, plot_size_distribution
-
-# Analyze a classification dataset
-stats = analyze_dataset('/path/to/dataset')
-print(f"Total images: {stats['total_images']}")
-print(f"Classes: {stats['classes']}")
-print(f"Class distribution: {stats['class_distribution']}")
-
-# Plot size distribution of images in dataset
-plot_size_distribution('/path/to/dataset', save_path='size_distribution.png')
-
-# Run comprehensive dataset inspection
-inspector = dataset_inspector.DatasetInspector('/path/to/dataset')
-report = inspector.generate_report(save_path='dataset_report.txt')
-inspector.plot_statistics(save_dir='dataset_stats')
-```
-
-### Wavelet Feature Analysis for Classification
+È possibile personalizzare i modelli modificando i parametri:
 
 ```python
-from wavelet_lib.image_tools import WSTDatasetAnalyzer
+# Personalizza il modello di segmentazione
+from wavelet_lib.single_tile_segmentation.models import ScatteringUNet
 
-# Analyze wavelet features across dataset classes
-analyzer = WSTDatasetAnalyzer(
-    dataset_path='/path/to/dataset',
-    output_dir='wst_analysis',
-    J=2,
-    L=8
+model = ScatteringUNet(
+    J=3,  # Aumenta il numero di scale
+    input_shape=(512, 512),  # Aumenta la dimensione di input
+    num_classes=3  # Segmentazione multi-classe
 )
-
-# Compute and analyze features
-analyzer.analyze(sample_size=50)  # Analyze 50 samples per class
-
-# Generate visualizations of feature distributions by class
-analyzer.plot_class_feature_distributions()
-
-# Visualize feature importance for classification
-analyzer.plot_feature_importance() 
-
-# Generate t-SNE visualization of feature space
-analyzer.plot_feature_space_tsne(perplexity=30)
 ```
 
-## Classification Command Line Tools
+### Integrazione con Segment Anything (SAM)
 
-The library provides command-line tools for classification-related tasks:
+La libreria può essere integrata con Segment Anything di Meta:
 
-### Dataset Inspection for Classification
+```python
+import torch
+from segment_anything import SamPredictor, sam_model_registry
+import numpy as np
+import json
 
-```bash
-# Generate comprehensive dataset report for classification
-python -m wavelet_lib.dataset_tools.dataset_inspector \
-  --dataset /path/to/dataset \
-  --output dataset_report.txt \
-  --visualize
+# Carica il modello SAM
+sam = sam_model_registry["vit_h"](checkpoint="sam_vit_h_4b8939.pth")
+predictor = SamPredictor(sam)
 
-# Analyze class distribution
-python -m wavelet_lib.dataset_tools.dataset_inspector \
-  --dataset /path/to/dataset \
-  --class-distribution \
-  --output class_dist.png
+# Genera maschere
+# ... (codice per generare maschere con SAM)
+
+# Converti in formato COCO RLE
+# ... (codice per convertire in formato COCO RLE)
+
+# Classifica oggetti con il nostro modulo
+# ... (codice per classificare oggetti)
 ```
 
-### Wavelet Feature Visualization
+## Risoluzione dei Problemi
 
-```bash
-# Visualize wavelet scattering coefficients for an image
-python -m wavelet_lib.image_tools.visualize_wst \
-  --image /path/to/image.jpg \
-  --output wst_viz.png \
-  --j 2 \
-  --order 2
-  
-# Compare wavelet features between classes
-python -m wavelet_lib.image_tools.compare_class_features \
-  --dataset /path/to/dataset \
-  --samples 10 \
-  --output feature_comparison.png
-```
+### Problemi di Memoria CUDA
 
-### Feature Extraction Utilities
+Se incontri errori di memoria CUDA, prova a:
+- Ridurre la dimensione del batch
+- Ridurre la dimensione delle immagini di input
+- Utilizzare un modello più leggero
 
-```bash
-# Extract wavelet features from dataset for external analysis
-python -m wavelet_lib.classification.extract_features \
-  --dataset /path/to/dataset \
-  --model /path/to/model.pth \
-  --output features.pkl \
-  --batch-size 64
-```
+### Prestazioni di Classificazione Scarse
 
-## Classification Experiments
+Se le prestazioni di classificazione sono scarse, prova a:
+- Aumentare il numero di epoche di addestramento
+- Modificare i parametri della trasformata scattering (J, ordine)
+- Applicare più data augmentation
+- Utilizzare un dataset più bilanciato
 
-The `experiments` directory contains examples of classification tasks with different datasets:
+### Segmentazione di Bassa Qualità
 
-- `experiments/custom_dataset_4_classe/`: Multi-class classification example with 4 classes
-- `experiments/dataset1/`: Binary classification example
-- `experiments/dataset2/`: Another classification example with different parameters
+Se la qualità della segmentazione è bassa, prova a:
+- Aumentare la dimensione di input del modello
+- Applicare operazioni morfologiche più aggressive
+- Utilizzare un modello con più parametri
 
-Each experiment includes:
-- Training configuration
-- Evaluation metrics
-- Visualizations of results
-- Analysis of model performance
+### Errori con Annotazioni COCO RLE
 
-To replicate an experiment, see the README.md file in each experiment directory.
+Se incontri errori con le annotazioni COCO RLE, verifica che:
+- Le annotazioni siano nel formato corretto
+- Le dimensioni delle immagini corrispondano a quelle nelle annotazioni
+- La libreria pycocotools sia installata correttamente
