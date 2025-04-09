@@ -247,6 +247,7 @@ experiments/nome_dataset/
 Per un utilizzo più avanzato e istruzioni dettagliate, consulta la [Guida all'Utilizzo](USAGE.md).
 
 Ogni modulo ha anche una propria guida dettagliata:
+
 - [Guida alla Classificazione di Immagini](wavelet_lib/single_tile_classification/usage.md)
 - [Guida alla Segmentazione di Immagini](wavelet_lib/single_tile_segmentation/usage.md)
 - [Guida alla Classificazione di Oggetti Segmentati](wavelet_lib/segmented_object_classification/usage.md)

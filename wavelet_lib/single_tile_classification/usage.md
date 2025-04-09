@@ -3,6 +3,7 @@
 Questo documento fornisce una guida dettagliata all'utilizzo del modulo `single_tile_classification` della libreria Wavelet Scattering Transform.
 
 ## Indice
+
 1. [Introduzione](#introduzione)
 2. [Installazione delle dipendenze](#installazione-delle-dipendenze)
 3. [Preparazione del dataset](#preparazione-del-dataset)

@@ -3,6 +3,7 @@
 Questo documento fornisce una guida dettagliata all'utilizzo del modulo `single_tile_segmentation` della libreria Wavelet Scattering Transform.
 
 ## Indice
+
 1. [Introduzione](#introduzione)
 2. [Installazione delle dipendenze](#installazione-delle-dipendenze)
 3. [Preparazione del dataset](#preparazione-del-dataset)
@@ -84,6 +85,7 @@ python script/core/segmentation/train_segmentation.py \
 ```
 
 ### Parametri
+
 - `--imgs_dir`: Directory contenente le immagini di training
 - `--masks_dir`: Directory contenente le maschere di segmentazione
 - `--model`: Percorso dove salvare il modello
@@ -167,6 +169,7 @@ python script/core/segmentation/run_segmentation.py \
 ```
 
 ### Parametri
+
 - `--image`: Percorso dell'immagine da segmentare
 - `--folder`: Directory contenente le immagini da segmentare
 - `--model`: Percorso del modello di segmentazione

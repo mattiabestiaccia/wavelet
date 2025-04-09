@@ -3,6 +3,7 @@
 Questo documento fornisce una guida dettagliata all'utilizzo del modulo `segmented_object_classification` della libreria Wavelet Scattering Transform.
 
 ## Indice
+
 1. [Introduzione](#introduzione)
 2. [Installazione delle dipendenze](#installazione-delle-dipendenze)
 3. [Creazione di un dataset da annotazioni COCO RLE](#creazione-di-un-dataset-da-annotazioni-coco-rle)
@@ -16,6 +17,7 @@ Questo documento fornisce una guida dettagliata all'utilizzo del modulo `segment
 Il modulo `segmented_object_classification` è progettato per classificare oggetti estratti da immagini segmentate utilizzando la trasformata wavelet scattering. È particolarmente utile per classificare oggetti segmentati da strumenti come Segment Anything (SAM) di Meta, che fornisce maschere in formato COCO RLE.
 
 Le classi supportate di default sono:
+
 - vegetazione_bassa
 - vegetazione_alta
 - strade
@@ -46,6 +48,7 @@ python script/core/segmented_object_classification/create_dataset_from_annotatio
 ```
 
 ### Parametri
+
 - `--images_dir`: Directory contenente le immagini originali
 - `--annotations_dir`: Directory contenente i file di annotazione JSON in formato COCO RLE
 - `--output_dir`: Directory di output per il dataset
@@ -54,6 +57,7 @@ python script/core/segmented_object_classification/create_dataset_from_annotatio
 ### Struttura del dataset generato
 
 Il dataset generato avrà la seguente struttura:
+
 ```
 /path/to/dataset/
 ├── vegetazione_bassa/
@@ -101,6 +105,7 @@ python script/core/segmented_object_classification/train_classifier.py \
 ```
 
 ### Parametri
+
 - `--train_dir`: Directory contenente i dati di training
 - `--val_dir`: (Opzionale) Directory contenente i dati di validazione
 - `--model_path`: Percorso dove salvare il modello
@@ -179,6 +184,7 @@ python script/core/segmented_object_classification/run_segmented_classification.
 ```
 
 ### Parametri
+
 - `--image`: Percorso dell'immagine da processare
 - `--images_dir`: Directory contenente le immagini da processare
 - `--mask`: Percorso della maschera di segmentazione
