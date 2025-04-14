@@ -10,6 +10,7 @@ Questa guida fornisce istruzioni dettagliate per l'utilizzo della Wavelet Scatte
    - [Classificazione di Immagini](#classificazione-di-immagini)
    - [Segmentazione di Immagini](#segmentazione-di-immagini)
    - [Classificazione di Oggetti Segmentati](#classificazione-di-oggetti-segmentati)
+   - [Classificazione Pixel-Wise](#classificazione-pixel-wise)
 5. [Workflow Completi](#workflow-completi)
 6. [Utilizzo Avanzato](#utilizzo-avanzato)
 7. [Risoluzione dei Problemi](#risoluzione-dei-problemi)
@@ -18,10 +19,11 @@ Questa guida fornisce istruzioni dettagliate per l'utilizzo della Wavelet Scatte
 
 La Wavelet Scattering Transform Library è una libreria Python progettata per sfruttare la potenza della trasformata wavelet scattering per diverse attività di analisi di immagini. La trasformata wavelet scattering è particolarmente efficace per estrarre caratteristiche robuste da immagini, che possono essere utilizzate per classificazione, segmentazione e altre attività di analisi.
 
-La libreria offre tre moduli principali:
+La libreria offre quattro moduli principali:
 - **Single Tile Classification**: Per la classificazione di immagini singole
 - **Single Tile Segmentation**: Per la segmentazione di immagini singole
 - **Segmented Object Classification**: Per la classificazione di oggetti estratti da immagini segmentate
+- **Single Pixel Classification**: Per la classificazione pixel-wise di immagini multibanda
 
 ## Installazione
 
@@ -58,17 +60,22 @@ wavelet/
 │   │   ├── models.py             # Modelli di segmentazione
 │   │   ├── processors.py         # Processori per l'inferenza
 │   │   └── usage.md              # Guida specifica per la segmentazione
-│   └── segmented_object_classification/  # Modulo per la classificazione di oggetti segmentati
-│       ├── models.py             # Modelli per oggetti segmentati
-│       ├── processors.py         # Processori per oggetti segmentati
-│       ├── rle_utils.py          # Utilità per annotazioni COCO RLE
-│       ├── training.py           # Funzioni di addestramento specifiche
-│       └── usage.md              # Guida specifica per oggetti segmentati
+│   ├── segmented_object_classification/  # Modulo per la classificazione di oggetti segmentati
+│   │   ├── models.py             # Modelli per oggetti segmentati
+│   │   ├── processors.py         # Processori per oggetti segmentati
+│   │   ├── rle_utils.py          # Utilità per annotazioni COCO RLE
+│   │   ├── training.py           # Funzioni di addestramento specifiche
+│   │   └── usage.md              # Guida specifica per oggetti segmentati
+│   └── single_pixel_classification/   # Modulo per la classificazione pixel-wise
+│       ├── models.py             # Modelli per classificazione pixel-wise
+│       ├── processors.py         # Processori per classificazione pixel-wise
+│       └── usage.md              # Guida specifica per classificazione pixel-wise
 ├── script/                       # Script eseguibili
 │   └── core/                     # Script principali
 │       ├── classification/       # Script per la classificazione
 │       ├── segmentation/         # Script per la segmentazione
-│       └── segmented_object_classification/  # Script per oggetti segmentati
+│       ├── segmented_object_classification/  # Script per oggetti segmentati
+│       └── pixel_classification/   # Script per classificazione pixel-wise
 └── experiments/                  # Directory per gli esperimenti
 ```
 
@@ -218,6 +225,39 @@ for obj_img, bbox, obj_mask, class_name, score in objects:
 
 Per istruzioni più dettagliate, consulta la [Guida alla Classificazione di Oggetti Segmentati](wavelet_lib/segmented_object_classification/usage.md).
 
+### Classificazione Pixel-Wise
+
+Il modulo `single_pixel_classification` fornisce strumenti per la classificazione pixel-wise di immagini multibanda utilizzando la trasformata wavelet scattering.
+
+#### Esempio di Utilizzo Base
+
+```python
+from wavelet_lib.single_pixel_classification.processors import PixelClassificationProcessor
+
+# Crea processore
+processor = PixelClassificationProcessor(
+    model_path="/path/to/model.pth",
+    patch_size=32,
+    stride=16,
+    J=2
+)
+
+# Classifica un'immagine
+classification_map = processor.process_image(
+    image_path="image.jpg",
+    output_path="/path/to/output/classification.png",
+    overlay=True
+)
+
+# Visualizza risultati
+processor.visualize_results(
+    image_path="image.jpg",
+    classification_map=classification_map
+)
+```
+
+Per istruzioni più dettagliate, consulta la [Guida alla Classificazione Pixel-Wise](wavelet_lib/single_pixel_classification/usage.md).
+
 ## Workflow Completi
 
 La libreria supporta diversi workflow completi per l'analisi di immagini:
@@ -244,7 +284,14 @@ La libreria supporta diversi workflow completi per l'analisi di immagini:
 4. Addestramento di un classificatore per gli oggetti
 5. Classificazione di nuovi oggetti segmentati
 
-### Workflow 4: Pipeline Completa
+### Workflow 4: Classificazione Pixel-Wise
+
+1. Preparazione del dataset con immagini e maschere di classe
+2. Addestramento del modello di classificazione pixel-wise
+3. Classificazione di nuove immagini
+4. Visualizzazione delle mappe di classificazione
+
+### Workflow 5: Pipeline Completa
 
 1. Segmentazione di immagini
 2. Estrazione di oggetti

@@ -40,6 +40,14 @@ Questa libreria fornisce strumenti per sfruttare le trasformate wavelet scatteri
 - Analisi statistica della distribuzione delle classi negli oggetti segmentati
 - Visualizzazione dei risultati con etichette e bounding box
 
+### Classificazione Pixel-Wise (Single Pixel Classification)
+
+- Classificazione di ogni pixel in immagini multibanda (3 o più bande)
+- Applicazione della trasformata wavelet scattering mantenendo la coerenza tra le bande
+- Classificazione in categorie come acqua, vegetazione, strade ed edifici
+- Approccio a patch per processare immagini di grandi dimensioni
+- Visualizzazione dei risultati con mappe colorate e overlay
+
 ### Strumenti di Analisi Wavelet
 
 - Estrazione di caratteristiche mediante trasformata wavelet discreta (DWT)
@@ -181,6 +189,38 @@ for i, (obj_img, bbox, obj_mask, class_name, score) in enumerate(objects):
     print(f"Oggetto {i}: Classe {result['class']} con confidenza {result['confidence']:.2f}")
 ```
 
+### Classificazione Pixel-Wise
+
+```python
+from wavelet_lib.single_pixel_classification.processors import PixelClassificationProcessor
+import cv2
+import matplotlib.pyplot as plt
+
+# Carica il processore
+processor = PixelClassificationProcessor(
+    model_path="model_pixel_classification.pth",
+    patch_size=32,
+    stride=16,
+    J=2
+)
+
+# Classifica un'immagine pixel per pixel
+classification_map = processor.process_image(
+    image_path="image.jpg",
+    output_path="classification_map.png",
+    overlay=True
+)
+
+# Visualizza i risultati
+processor.visualize_results(
+    image_path="image.jpg",
+    classification_map=classification_map
+)
+
+# Crea legenda
+processor.create_legend(output_path="legend.png")
+```
+
 ## Utilizzo da Riga di Comando
 
 ### Classificazione di Immagini
@@ -222,6 +262,19 @@ python script/core/segmented_object_classification/train_classifier.py --train_d
 python script/core/segmented_object_classification/run_segmented_classification.py --image /path/to/image.jpg --annotation /path/to/annotation.json --model /path/to/model.pth --output /path/to/output --visualize
 ```
 
+### Classificazione Pixel-Wise
+
+```bash
+# Addestra un classificatore pixel-wise
+python script/core/pixel_classification/train_pixel_classifier.py --images_dir /path/to/images --masks_dir /path/to/masks --model /path/to/model.pth --patch_size 32 --stride 16 --epochs 50
+
+# Classifica un'immagine pixel per pixel
+python script/core/pixel_classification/run_pixel_classification.py --image /path/to/image.jpg --model /path/to/model.pth --output /path/to/output --overlay
+
+# Classifica una cartella di immagini
+python script/core/pixel_classification/run_pixel_classification.py --folder /path/to/images --model /path/to/model.pth --output /path/to/output
+```
+
 ## Struttura degli Esperimenti
 
 Ogni esperimento è organizzato nella seguente struttura:
@@ -251,6 +304,7 @@ Ogni modulo ha anche una propria guida dettagliata:
 - [Guida alla Classificazione di Immagini](wavelet_lib/single_tile_classification/usage.md)
 - [Guida alla Segmentazione di Immagini](wavelet_lib/single_tile_segmentation/usage.md)
 - [Guida alla Classificazione di Oggetti Segmentati](wavelet_lib/segmented_object_classification/usage.md)
+- [Guida alla Classificazione Pixel-Wise](wavelet_lib/single_pixel_classification/usage.md)
 
 ## Requisiti
 

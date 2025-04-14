@@ -9,6 +9,7 @@ from wavelet_lib.visualization import *
 from wavelet_lib.single_tile_classification import *
 from wavelet_lib.single_tile_segmentation import *
 from wavelet_lib.segmented_object_classification import *
+from wavelet_lib.single_pixel_classification import *
 
 # Utility modules
 # Dataset tools
