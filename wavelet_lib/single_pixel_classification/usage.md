@@ -13,9 +13,15 @@ Questo documento fornisce una guida dettagliata all'utilizzo del modulo `single_
 
 ## Introduzione
 
-Il modulo `single_pixel_classification` è progettato per la classificazione pixel-wise di immagini multibanda utilizzando la trasformata wavelet scattering. A differenza della classificazione di immagini intere, questo modulo classifica ogni pixel dell'immagine in categorie come acqua, vegetazione, strade ed edifici, mantenendo la coerenza tra le bande.
+Il modulo `single_pixel_classification` è progettato per la classificazione pixel-wise di immagini multibanda. A differenza della classificazione di immagini intere, questo modulo classifica ogni pixel dell'immagine in categorie come acqua, vegetazione, strade ed edifici, mantenendo la coerenza tra le bande.
 
-Il modulo utilizza un approccio a patch per processare l'immagine, applicando la trasformata wavelet scattering a ciascuna patch e classificando i pixel centrali. Questo approccio è particolarmente efficace per immagini satellitari o aeree multibanda, dove le caratteristiche di texture e scala sono importanti per la classificazione del terreno.
+Il modulo supporta due modalità di funzionamento:
+
+1. **Con trasformata wavelet scattering**: Applica la trasformata wavelet scattering a ciascuna patch prima della classificazione, estraendo caratteristiche robuste di texture e scala.
+
+2. **Senza trasformata wavelet scattering**: Classifica direttamente i pixel utilizzando una rete neurale convoluzionale più profonda, senza la fase di trasformazione wavelet.
+
+Entrambe le modalità utilizzano un approccio a patch per processare l'immagine, classificando i pixel centrali di ciascuna patch. Questo approccio è particolarmente efficace per immagini satellitari o aeree multibanda, dove le caratteristiche di texture e scala sono importanti per la classificazione del terreno.
 
 Le classi supportate di default sono:
 - background
@@ -68,6 +74,8 @@ Una volta preparato il dataset, puoi addestrare un modello di classificazione pi
 
 ### Utilizzo dello script da riga di comando
 
+#### Con trasformata wavelet scattering (default)
+
 ```bash
 python script/core/pixel_classification/train_pixel_classifier.py \
     --images_dir /path/to/dataset/images \
@@ -78,6 +86,20 @@ python script/core/pixel_classification/train_pixel_classifier.py \
     --batch_size 16 \
     --epochs 50 \
     --j 2
+```
+
+#### Senza trasformata wavelet scattering
+
+```bash
+python script/core/pixel_classification/train_pixel_classifier.py \
+    --images_dir /path/to/dataset/images \
+    --masks_dir /path/to/dataset/masks \
+    --model /path/to/save/model_no_scattering.pth \
+    --patch_size 32 \
+    --stride 16 \
+    --batch_size 16 \
+    --epochs 50 \
+    --no_scattering
 ```
 
 ### Parametri
@@ -92,12 +114,15 @@ python script/core/pixel_classification/train_pixel_classifier.py \
 - `--val_split`: Frazione dei dati da usare per la validazione (default: 0.2)
 - `--j`: Numero di scale per la trasformata scattering (default: 2)
 - `--scattering_order`: Ordine della trasformata scattering (default: 2)
+- `--no_scattering`: Disabilita la trasformata scattering
 - `--no_augment`: Disabilita data augmentation
 - `--seed`: Seed per la riproducibilità (default: 42)
 - `--num_classes`: Numero di classi (default: 5)
 - `--class_names`: Nomi delle classi separati da virgola
 
 ### Utilizzo programmatico
+
+#### Con trasformata wavelet scattering
 
 ```python
 from wavelet_lib.base import Config
@@ -128,7 +153,7 @@ train_indices, val_indices = train_test_split(
 train_dataset = Subset(dataset, train_indices)
 val_dataset = Subset(dataset, val_indices)
 
-# Crea configurazione
+# Crea configurazione con trasformata scattering
 config = Config(
     num_channels=3,  # RGB
     num_classes=5,
@@ -136,6 +161,7 @@ config = Config(
     J=2,
     shape=(32, 32)
 )
+config.use_scattering = True  # Abilita la trasformata scattering
 
 # Crea modello e trasformata scattering
 model, scattering = create_pixel_classifier(config)
@@ -150,7 +176,64 @@ history = train_pixel_classifier(
     learning_rate=1e-4,
     device="cuda" if torch.cuda.is_available() else "cpu",
     scattering=scattering,
-    model=model
+    model=model,
+    use_scattering=True
+)
+```
+
+#### Senza trasformata wavelet scattering
+
+```python
+from wavelet_lib.base import Config
+from wavelet_lib.single_pixel_classification.models import (
+    create_pixel_classifier,
+    train_pixel_classifier,
+    PixelWiseDataset
+)
+from torch.utils.data import Subset
+from sklearn.model_selection import train_test_split
+
+# Crea dataset
+dataset = PixelWiseDataset(
+    images_dir="/path/to/dataset/images",
+    masks_dir="/path/to/dataset/masks",
+    patch_size=32,
+    stride=16,
+    augment=True
+)
+
+# Dividi in training e validation
+train_indices, val_indices = train_test_split(
+    range(len(dataset)),
+    test_size=0.2,
+    random_state=42
+)
+
+train_dataset = Subset(dataset, train_indices)
+val_dataset = Subset(dataset, val_indices)
+
+# Crea configurazione senza trasformata scattering
+config = Config(
+    num_channels=3,  # RGB
+    num_classes=5,
+    shape=(32, 32)
+)
+config.use_scattering = False  # Disabilita la trasformata scattering
+
+# Crea modello (senza trasformata scattering)
+model, _ = create_pixel_classifier(config)
+
+# Addestra il modello
+history = train_pixel_classifier(
+    train_dataset=train_dataset,
+    val_dataset=val_dataset,
+    model_path="/path/to/save/model_no_scattering.pth",
+    batch_size=16,
+    num_epochs=50,
+    learning_rate=1e-4,
+    device="cuda" if torch.cuda.is_available() else "cpu",
+    model=model,
+    use_scattering=False
 )
 ```
 
@@ -160,6 +243,8 @@ Dopo aver addestrato un modello, puoi utilizzarlo per classificare nuove immagin
 
 ### Utilizzo dello script da riga di comando
 
+#### Con trasformata wavelet scattering (default)
+
 ```bash
 python script/core/pixel_classification/run_pixel_classification.py \
     --image /path/to/image.jpg \
@@ -167,7 +252,21 @@ python script/core/pixel_classification/run_pixel_classification.py \
     --output /path/to/output \
     --overlay \
     --patch_size 32 \
-    --stride 16
+    --stride 16 \
+    --j 2
+```
+
+#### Senza trasformata wavelet scattering
+
+```bash
+python script/core/pixel_classification/run_pixel_classification.py \
+    --image /path/to/image.jpg \
+    --model /path/to/model_no_scattering.pth \
+    --output /path/to/output \
+    --overlay \
+    --patch_size 32 \
+    --stride 16 \
+    --no_scattering
 ```
 
 Per processare una cartella di immagini:
@@ -188,21 +287,25 @@ python script/core/pixel_classification/run_pixel_classification.py \
 - `--patch_size`: Dimensione delle patch (default: 32)
 - `--stride`: Passo per l'inferenza (default: 16)
 - `--j`: Numero di scale per la trasformata scattering (default: 2)
+- `--no_scattering`: Disabilita la trasformata scattering
 - `--overlay`: Crea un overlay con l'immagine originale
 - `--alpha`: Opacità dell'overlay (default: 0.5)
 - `--no_display`: Non visualizzare i risultati
 
 ### Utilizzo programmatico
 
+#### Con trasformata wavelet scattering
+
 ```python
 from wavelet_lib.single_pixel_classification.processors import PixelClassificationProcessor
 
-# Crea processore
+# Crea processore con trasformata scattering
 processor = PixelClassificationProcessor(
     model_path="/path/to/model.pth",
     patch_size=32,
     stride=16,
-    J=2
+    J=2,
+    use_scattering=True  # Abilita la trasformata scattering (default)
 )
 
 # Classifica un'immagine
@@ -226,6 +329,35 @@ processor.create_legend(
 )
 ```
 
+#### Senza trasformata wavelet scattering
+
+```python
+from wavelet_lib.single_pixel_classification.processors import PixelClassificationProcessor
+
+# Crea processore senza trasformata scattering
+processor = PixelClassificationProcessor(
+    model_path="/path/to/model_no_scattering.pth",
+    patch_size=32,
+    stride=16,
+    use_scattering=False  # Disabilita la trasformata scattering
+)
+
+# Classifica un'immagine
+classification_map = processor.process_image(
+    image_path="/path/to/image.jpg",
+    output_path="/path/to/output/classification_no_scattering.png",
+    overlay=True,
+    alpha=0.5
+)
+
+# Visualizza risultati
+processor.visualize_results(
+    image_path="/path/to/image.jpg",
+    classification_map=classification_map,
+    output_path="/path/to/output/results_no_scattering.png"
+)
+```
+
 ## Utilizzo avanzato
 
 ### Personalizzazione delle classi
@@ -241,12 +373,81 @@ python script/core/pixel_classification/train_pixel_classifier.py \
     --class_names "background,water,vegetation,streets,buildings,sand,mudflat"
 ```
 
-### Supporto per immagini multibanda
+### Confronto tra modalità con e senza trasformata scattering
 
-Il modulo supporta immagini multibanda (più di 3 canali):
+Per valutare il vantaggio di utilizzare la trasformata wavelet scattering, puoi addestrare e confrontare modelli con e senza questa trasformazione:
 
 ```python
-# Configura per immagini multibanda
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Addestra modello con trasformata scattering
+config_with_scattering = Config(
+    num_channels=3,
+    num_classes=5,
+    scattering_order=2,
+    J=2,
+    shape=(32, 32)
+)
+config_with_scattering.use_scattering = True
+model_with_scattering, scattering = create_pixel_classifier(config_with_scattering)
+history_with_scattering = train_pixel_classifier(
+    train_dataset=train_dataset,
+    val_dataset=val_dataset,
+    model_path="model_with_scattering.pth",
+    use_scattering=True,
+    model=model_with_scattering,
+    scattering=scattering
+)
+
+# Addestra modello senza trasformata scattering
+config_without_scattering = Config(
+    num_channels=3,
+    num_classes=5,
+    shape=(32, 32)
+)
+config_without_scattering.use_scattering = False
+model_without_scattering, _ = create_pixel_classifier(config_without_scattering)
+history_without_scattering = train_pixel_classifier(
+    train_dataset=train_dataset,
+    val_dataset=val_dataset,
+    model_path="model_without_scattering.pth",
+    use_scattering=False,
+    model=model_without_scattering
+)
+
+# Confronta le prestazioni
+plt.figure(figsize=(12, 5))
+
+# Confronto accuratezza
+plt.subplot(1, 2, 1)
+plt.plot(history_with_scattering['val_acc'], label='Con WST')
+plt.plot(history_without_scattering['val_acc'], label='Senza WST')
+plt.xlabel('Epoca')
+plt.ylabel('Accuratezza (%)')
+plt.legend()
+plt.title('Confronto Accuratezza')
+
+# Confronto loss
+plt.subplot(1, 2, 2)
+plt.plot(history_with_scattering['val_loss'], label='Con WST')
+plt.plot(history_without_scattering['val_loss'], label='Senza WST')
+plt.xlabel('Epoca')
+plt.ylabel('Loss')
+plt.legend()
+plt.title('Confronto Loss')
+
+plt.tight_layout()
+plt.savefig('confronto_wst.png')
+plt.show()
+```
+
+### Supporto per immagini multibanda
+
+Il modulo supporta immagini multibanda (più di 3 canali) in entrambe le modalità:
+
+```python
+# Configura per immagini multibanda con trasformata scattering
 config = Config(
     num_channels=5,  # Ad esempio, 5 bande
     num_classes=5,
@@ -254,9 +455,21 @@ config = Config(
     J=2,
     shape=(32, 32)
 )
+config.use_scattering = True  # Abilita la trasformata scattering
 
 # Crea modello per immagini multibanda
 model, scattering = create_pixel_classifier(config)
+
+# Configura per immagini multibanda senza trasformata scattering
+config_no_scattering = Config(
+    num_channels=5,  # Ad esempio, 5 bande
+    num_classes=5,
+    shape=(32, 32)
+)
+config_no_scattering.use_scattering = False  # Disabilita la trasformata scattering
+
+# Crea modello per immagini multibanda senza trasformata scattering
+model_no_scattering, _ = create_pixel_classifier(config_no_scattering)
 ```
 
 ### Ottimizzazione dei parametri
@@ -296,15 +509,28 @@ Se la qualità della classificazione è bassa, prova a:
 - Ridurre lo stride per un'inferenza più densa
 - Aumentare il numero di epoche di addestramento
 - Utilizzare un dataset più bilanciato
+- Provare entrambe le modalità (con e senza trasformata scattering) per vedere quale funziona meglio per il tuo caso specifico
 
 ```bash
+# Prova con trasformata scattering
 python script/core/pixel_classification/train_pixel_classifier.py \
     --images_dir /path/to/dataset/images \
     --masks_dir /path/to/dataset/masks \
-    --model /path/to/model.pth \
+    --model /path/to/model_wst.pth \
     --patch_size 64 \
     --stride 32 \
-    --epochs 100
+    --epochs 100 \
+    --j 3
+
+# Prova senza trasformata scattering
+python script/core/pixel_classification/train_pixel_classifier.py \
+    --images_dir /path/to/dataset/images \
+    --masks_dir /path/to/dataset/masks \
+    --model /path/to/model_no_wst.pth \
+    --patch_size 64 \
+    --stride 32 \
+    --epochs 100 \
+    --no_scattering
 ```
 
 ### Artefatti ai bordi

@@ -31,12 +31,12 @@ from wavelet_lib.single_pixel_classification.models import (
 def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(description='Addestramento classificatore pixel-wise con WST')
-    
+
     # Input e output
     parser.add_argument('--images_dir', type=str, required=True, help='Directory contenente le immagini di training')
     parser.add_argument('--masks_dir', type=str, required=True, help='Directory contenente le maschere di classe')
     parser.add_argument('--model', type=str, required=True, help='Percorso dove salvare il modello')
-    
+
     # Parametri di training
     parser.add_argument('--patch_size', type=int, default=32, help='Dimensione delle patch')
     parser.add_argument('--stride', type=int, default=16, help='Passo per l\'estrazione delle patch')
@@ -44,17 +44,18 @@ def parse_args():
     parser.add_argument('--epochs', type=int, default=50, help='Numero di epoche')
     parser.add_argument('--learning_rate', type=float, default=1e-4, help='Learning rate')
     parser.add_argument('--val_split', type=float, default=0.2, help='Frazione dei dati da usare per la validazione')
-    
+
     # Parametri della trasformata scattering
     parser.add_argument('--j', type=int, default=2, help='Numero di scale per la trasformata scattering')
     parser.add_argument('--scattering_order', type=int, default=2, help='Ordine della trasformata scattering')
-    
+    parser.add_argument('--no_scattering', action='store_true', help='Disabilita la trasformata scattering')
+
     # Altre opzioni
     parser.add_argument('--no_augment', action='store_true', help='Disabilita data augmentation')
     parser.add_argument('--seed', type=int, default=42, help='Seed per la riproducibilità')
     parser.add_argument('--num_classes', type=int, default=5, help='Numero di classi (default: 5)')
     parser.add_argument('--class_names', type=str, help='Nomi delle classi separati da virgola')
-    
+
     return parser.parse_args()
 
 
@@ -63,11 +64,11 @@ def main(args):
     # Imposta seed per la riproducibilità
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
-    
+
     # Determina il device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Utilizzo device: {device}")
-    
+
     # Crea mapping delle classi
     if args.class_names:
         class_names = args.class_names.split(',')
@@ -80,9 +81,9 @@ def main(args):
             3: "streets",
             4: "buildings"
         }
-    
+
     print(f"Classi: {class_mapping}")
-    
+
     # Crea dataset
     print(f"Creazione dataset da {args.images_dir} e {args.masks_dir}")
     dataset = PixelWiseDataset(
@@ -93,24 +94,24 @@ def main(args):
         augment=not args.no_augment,
         class_mapping=class_mapping
     )
-    
+
     print(f"Dataset creato con {len(dataset)} patch")
-    
+
     # Dividi in training e validation
     train_indices, val_indices = train_test_split(
         range(len(dataset)),
         test_size=args.val_split,
         random_state=args.seed
     )
-    
+
     # Crea subset
     from torch.utils.data import Subset
     train_dataset = Subset(dataset, train_indices)
     val_dataset = Subset(dataset, val_indices)
-    
+
     print(f"Training set: {len(train_dataset)} patch")
     print(f"Validation set: {len(val_dataset)} patch")
-    
+
     # Crea configurazione
     config = Config(
         num_channels=3,  # RGB
@@ -123,13 +124,19 @@ def main(args):
         epochs=args.epochs,
         learning_rate=args.learning_rate
     )
-    
+
+    # Aggiungi il parametro use_scattering alla configurazione
+    config.use_scattering = not args.no_scattering
+
+    # Stampa informazioni sulla modalità
+    print(f"Modalità: {'Senza' if args.no_scattering else 'Con'} trasformata scattering")
+
     # Crea modello e trasformata scattering
     model, scattering = create_pixel_classifier(config)
-    
+
     # Stampa riepilogo della configurazione
     config.print_summary()
-    
+
     # Addestra il modello
     history = train_pixel_classifier(
         train_dataset=train_dataset,
@@ -142,7 +149,7 @@ def main(args):
         scattering=scattering,
         model=model
     )
-    
+
     print("\nAddestramento completato con successo!")
     print(f"Modello salvato in: {args.model}")
 
